@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trantramy - Tran Tra My</title>
+    
+    <style>
+      :root {
+        --bg-canvas: #1e1e2e;
+        --bg-surface-1: #313244;
+        --bg-surface-2: #45475a;
+        --bg-surface-3: #45475a;
+        --bg-glass: rgb(49 50 68 / 0.88);
+        --border-subtle: #585b70;
+        --border-strong: #73788f;
+        --text-primary: #cdd6f4;
+        --text-secondary: #bac2de;
+        --text-muted: #adb4ce;
+        --accent: #cba6f7;
+        --accent-hover: #d4b8f9;
+        --accent-soft: rgb(203 166 247 / 0.16);
+        --accent-glow: rgb(203 166 247 / 0.25);
+        --signal-online: #a6e3a1;
+        --signal-online-soft: rgb(166 227 161 / 0.15);
+        --yt-tone: oklch(0.68 0.19 22);
+        --yt-soft: oklch(0.68 0.19 22 / 0.15);
+        --sc-tone: oklch(0.72 0.17 236);
+        --sc-soft: oklch(0.72 0.17 236 / 0.16);
+        --danger: #f38ba8;
+        --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", Arial, sans-serif;
+        --font-mono: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
+        --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: var(--bg-canvas);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        font-variant-numeric: tabular-nums;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        user-select: none;
+        overflow: hidden;
+      }
+
+      button, input, select, textarea {
+        font-family: inherit;
+        letter-spacing: inherit;
+      }
+
+      button:focus-visible, a:focus-visible, input:focus-visible,
+      select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      input, textarea {
+        caret-color: var(--accent);
+        user-select: text;
+      }
+      ::selection {
+        background: var(--accent);
+        color: var(--accent-fg, var(--bg-canvas));
+      }
+
+      .lucide-icon {
+        display: inline-block;
+        vertical-align: middle;
+        flex-shrink: 0;
+      }
+
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border-strong);
+        border-radius: 999px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--accent);
+      }
+
+      html[data-density="compact"] .trow,
+      html[data-density="compact"] .res-row {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+      }
+      html[data-density="spacious"] .trow,
+      html[data-density="spacious"] .res-row {
+        padding-top: 12px !important;
+        padding-bottom: 12px !important;
+      }
+      html[data-glow="off"] .stage {
+        background: none !important;
+      }
+
+      @keyframes eq-bar-1 {
+        0%, 100% { height: 4px; }
+        50% { height: 14px; }
+      }
+      @keyframes eq-bar-2 {
+        0%, 100% { height: 13px; }
+        35% { height: 4px; }
+        70% { height: 11px; }
+      }
+      @keyframes eq-bar-3 {
+        0%, 100% { height: 6px; }
+        45% { height: 14px; }
+        80% { height: 3px; }
+      }
+
+      /* ==========================================================================
+         APPLE LIQUID GLASS STYLES (html[data-apple-glass="on"])
+         - Seamless Unified Continuous Glass Canvas (Không chia khúc)
+         - Harmonious Edge-to-Edge Sidebar & Deck Integration
+         - Clean Refined Translucent Panels & Micro-Interactions
+         ========================================================================== */
+      html[data-apple-glass="on"] {
+        --glass-line: color-mix(in srgb, var(--text-primary) 12%, transparent);
+        --glass-hover: color-mix(in srgb, var(--text-primary) 6%, transparent);
+        --glass-highlight: color-mix(in srgb, var(--text-primary) 8%, transparent);
+      }
+
+      /* Unified seamless glass stage & sidebar */
+      html[data-apple-glass="on"] .studio-shell {
+        background: var(--bg-app, var(--bg-canvas)) !important;
+      }
+
+      html[data-apple-glass="on"] .sidebar {
+        background: transparent !important;
+        border-right: 1px solid var(--glass-line) !important;
+        backdrop-filter: none !important;
+      }
+
+      html[data-apple-glass="on"] .stage {
+        background: transparent !important;
+      }
+
+      /* Seamless bottom player deck - completely flush, no awkward margins or cutoffs */
+      html[data-apple-glass="on"] .deck {
+        margin: 0 !important;
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+        border-top: 1px solid var(--glass-line) !important;
+        background: var(--bg-glass) !important;
+        backdrop-filter: blur(24px) saturate(135%) !important;
+        box-shadow: none !important;
+        transition: background 0.25s ease, border-color 0.25s ease !important;
+      }
+
+      /* Apple Liquid Glass Cards & Container Panels */
+      html[data-apple-glass="on"] .yt-music-card,
+      html[data-apple-glass="on"] .qp-tile,
+      html[data-apple-glass="on"] .cfg-card,
+      html[data-apple-glass="on"] .code-hub-card,
+      html[data-apple-glass="on"] .audio-tool-box,
+      html[data-apple-glass="on"] .results-panel,
+      html[data-apple-glass="on"] .rp-song-card,
+      html[data-apple-glass="on"] .wf-opt-card,
+      html[data-apple-glass="on"] .eq-dialog,
+      html[data-apple-glass="on"] .sp-modal-card {
+        border-radius: var(--ui-radius, 16px) !important;
+        border: 1px solid var(--glass-line) !important;
+        box-shadow: inset 0 1px 0 var(--glass-highlight) !important;
+        backdrop-filter: blur(20px) saturate(130%) !important;
+        background: var(--bg-surface-1) !important;
+        transition: background 0.18s ease, border-color 0.18s ease !important;
+      }
+
+      html[data-apple-glass="on"] .yt-music-card:hover,
+      html[data-apple-glass="on"] .qp-tile:hover,
+      html[data-apple-glass="on"] .wf-opt-card:hover {
+        transform: none !important;
+        border-color: color-mix(in srgb, var(--text-primary) 22%, transparent) !important;
+        background: var(--bg-surface-2) !important;
+      }
+
+      /* Seamless track list rows - NO chunky box segmentation */
+      html[data-apple-glass="on"] .trow,
+      html[data-apple-glass="on"] .res-row {
+        border-radius: 8px !important;
+        border: 1px solid transparent !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        background: transparent !important;
+        transition: background 0.15s ease, border-color 0.15s ease !important;
+      }
+      html[data-apple-glass="on"] .trow:hover,
+      html[data-apple-glass="on"] .res-row:hover {
+        background: var(--glass-hover) !important;
+        border-color: transparent !important;
+        box-shadow: none !important;
+        transform: none !important;
+      }
+      html[data-apple-glass="on"] .trow.cur {
+        background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
+        border-color: color-mix(in srgb, var(--accent) 25%, transparent) !important;
+      }
+
+      /* ==========================================================================
+         APPLE LIQUID GLASS BUTTONS - Pure Translucent Glass with Refraction Optics
+         - Transparent glass canvas letting background/wallpaper shine through
+         - Specular highlight bevel and crisp refraction borders
+         - When Apple Liquid Glass is OFF, all buttons revert to standard normal buttons
+         ========================================================================== */
+
+      /* Primary Action & Play Buttons: Translucent Glass with subtle refraction */
+      html[data-apple-glass="on"] .apply-btn,
+      html[data-apple-glass="on"] .btn-primary,
+      html[data-apple-glass="on"] .save-custom-btn,
+      html[data-apple-glass="on"] .bg-upload-primary-btn,
+      html[data-apple-glass="on"] .tool-btn,
+      html[data-apple-glass="on"] .play-fab,
+      html[data-apple-glass="on"] .hero-play-btn {
+        background: var(--accent) !important;
+        border: 1px solid transparent !important;
+        box-shadow: inset 0 1px 0 var(--glass-highlight) !important;
+        color: var(--accent-fg) !important;
+        transition: background 0.18s ease, transform 0.18s ease !important;
+      }
+
+      html[data-apple-glass="on"] .apply-btn:hover:not(:disabled),
+      html[data-apple-glass="on"] .btn-primary:hover:not(:disabled),
+      html[data-apple-glass="on"] .save-custom-btn:hover:not(:disabled),
+      html[data-apple-glass="on"] .bg-upload-primary-btn:hover:not(:disabled),
+      html[data-apple-glass="on"] .tool-btn:hover:not(:disabled),
+      html[data-apple-glass="on"] .play-fab:hover,
+      html[data-apple-glass="on"] .hero-play-btn:hover {
+        background: var(--accent-hover) !important;
+        transform: none !important;
+      }
+
+      html[data-apple-glass="on"] .apply-btn:active:not(:disabled),
+      html[data-apple-glass="on"] .btn-primary:active:not(:disabled),
+      html[data-apple-glass="on"] .save-custom-btn:active:not(:disabled),
+      html[data-apple-glass="on"] .tool-btn:active,
+      html[data-apple-glass="on"] .play-fab:active,
+      html[data-apple-glass="on"] .hero-play-btn:active {
+        background: var(--accent-hover) !important;
+        transform: scale(0.98) !important;
+      }
+
+      /* Secondary & Action Buttons: Crisp Transparent Glass */
+      html[data-apple-glass="on"] .copy-btn,
+      html[data-apple-glass="on"] .reset-btn,
+      html[data-apple-glass="on"] .btn-secondary,
+      html[data-apple-glass="on"] .bg-action-pill,
+      html[data-apple-glass="on"] .bg-url-btn,
+      html[data-apple-glass="on"] .util-btn,
+      html[data-apple-glass="on"] .ctrl-btn,
+      html[data-apple-glass="on"] .icon-btn {
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border: 1px solid var(--glass-line) !important;
+        box-shadow: none !important;
+        color: var(--text-secondary) !important;
+        transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease !important;
+      }
+
+      html[data-apple-glass="on"] .copy-btn:hover,
+      html[data-apple-glass="on"] .reset-btn:hover,
+      html[data-apple-glass="on"] .btn-secondary:hover,
+      html[data-apple-glass="on"] .bg-action-pill:hover,
+      html[data-apple-glass="on"] .bg-url-btn:hover:not(:disabled),
+      html[data-apple-glass="on"] .util-btn:hover,
+      html[data-apple-glass="on"] .ctrl-btn:hover,
+      html[data-apple-glass="on"] .icon-btn:hover {
+        background: var(--glass-hover) !important;
+        border-color: var(--glass-line) !important;
+        color: var(--text-primary) !important;
+        transform: none !important;
+      }
+
+      /* Segmented Controls in Liquid Glass */
+      html[data-apple-glass="on"] .seg-group {
+        background: var(--bg-surface-2) !important;
+        border: 1px solid var(--glass-line) !important;
+        box-shadow: none !important;
+      }
+      html[data-apple-glass="on"] .seg-group button {
+        background: transparent !important;
+        color: var(--text-secondary) !important;
+        transition: background 0.18s ease, color 0.18s ease !important;
+      }
+      html[data-apple-glass="on"] .seg-group button:hover:not(.active):not(:disabled) {
+        background: var(--glass-hover) !important;
+        color: var(--text-primary) !important;
+      }
+      html[data-apple-glass="on"] .seg-group button.active {
+        background: var(--bg-surface-3) !important;
+        border: 1px solid var(--glass-line) !important;
+        box-shadow: none !important;
+        color: var(--text-primary) !important;
+      }
+
+      /* Switch Buttons in Liquid Glass */
+      html[data-apple-glass="on"] .switch-btn {
+        background: var(--bg-surface-3) !important;
+        border: 1px solid var(--glass-line) !important;
+        box-shadow: none !important;
+      }
+      html[data-apple-glass="on"] .switch-btn.on {
+        background: var(--accent) !important;
+        border-color: transparent !important;
+      }
+      html[data-apple-glass="on"] .switch-btn span {
+        background: var(--text-primary) !important;
+        box-shadow: 0 1px 3px oklch(0 0 0 / 0.2) !important;
+      }
+
+      /* Navigation Tabs & Sidebar in Liquid Glass */
+      html[data-apple-glass="on"] .nav-item,
+      html[data-apple-glass="on"] .settings-tab {
+        border: 1px solid transparent !important;
+        transition: background 0.18s ease, color 0.18s ease !important;
+      }
+      html[data-apple-glass="on"] .nav-item:hover,
+      html[data-apple-glass="on"] .settings-tab:hover {
+        background: var(--glass-hover) !important;
+      }
+      html[data-apple-glass="on"] .nav-item.active,
+      html[data-apple-glass="on"] .settings-tab.active {
+        background: var(--accent-soft) !important;
+        border-color: color-mix(in srgb, var(--accent) 24%, transparent) !important;
+        box-shadow: none !important;
+        color: var(--text-primary) !important;
+      }
+
+      /* Apple Capsule Search Bar */
+      html[data-apple-glass="on"] .sidebar-search {
+        border-radius: var(--ui-radius-sm, 10px) !important;
+        border: 1px solid var(--glass-line) !important;
+        background: var(--bg-surface-1) !important;
+        box-shadow: none !important;
+      }
+
+      /* Quiet transport controls with clear selected and keyboard-focus states. */
+      html[data-apple-glass="on"] .deck .identity {
+        background: transparent;
+        border-color: transparent;
+        padding-left: 0;
+      }
+      html[data-apple-glass="on"] .deck .identity:hover:not(:disabled) {
+        background: var(--glass-hover);
+      }
+      html[data-apple-glass="on"] .deck .identity.active-inspect {
+        background: var(--accent-soft);
+      }
+      html[data-apple-glass="on"] .deck :is(.icon-btn, .util-btn) {
+        border-color: transparent !important;
+      }
+      html[data-apple-glass="on"] :is(.icon-btn, .util-btn, .ctrl-btn).active {
+        background: var(--accent-soft) !important;
+        color: var(--accent) !important;
+      }
+      html[data-apple-glass="on"] .switch-btn.on span {
+        background: var(--accent-fg) !important;
+      }
+      html[data-apple-glass="on"] :is(.apply-btn, .btn-primary, .save-custom-btn, .bg-upload-primary-btn, .tool-btn):disabled {
+        background: var(--bg-surface-2) !important;
+        color: var(--text-muted) !important;
+        cursor: not-allowed;
+      }
+      html[data-apple-glass="on"] .sidebar-search:focus-within {
+        border-color: var(--accent) !important;
+      }
+      html[data-apple-glass="on"] :is(button, input, [tabindex]):focus-visible {
+        outline: 2px solid var(--accent) !important;
+        outline-offset: 3px !important;
+      }
+
+      /* Apple Sliders */
+      html[data-apple-glass="on"] input[type="range"]::-webkit-slider-thumb {
+        border: none !important;
+        outline: none !important;
+        box-shadow: 0 1.5px 5px rgba(0, 0, 0, 0.35) !important;
+        background: #ffffff !important;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html[data-apple-glass="on"] *,
+        html[data-apple-glass="on"] *::before,
+        html[data-apple-glass="on"] *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+
+      /* ==========================================================================
+         WATER DROPLET THEME STYLES (html[data-droplet="on"])
+         - 3D Liquid Gloss Highlights
+         - Organic Fluid Radii & Surface Tension
+         ========================================================================== */
+      html[data-droplet="on"] {
+        --ui-radius: 20px !important;
+        --ui-radius-lg: 24px !important;
+        --ui-radius-md: 16px !important;
+        --ui-radius-sm: 12px !important;
+      }
+
+      html[data-droplet="on"] .stage {
+        background: radial-gradient(ellipse 80% 60% at 20% 10%, rgba(0, 220, 255, 0.08), transparent 75%), var(--bg-canvas) !important;
+      }
+
+      /* Droplet Cards, Sections, Hubs */
+      html[data-droplet="on"] .yt-music-card,
+      html[data-droplet="on"] .qp-tile,
+      html[data-droplet="on"] .cfg-card,
+      html[data-droplet="on"] .code-hub-card,
+      html[data-droplet="on"] .audio-tool-box,
+      html[data-droplet="on"] .results-panel,
+      html[data-droplet="on"] .rp-song-card,
+      html[data-droplet="on"] .wf-opt-card,
+      html[data-droplet="on"] .eq-dialog,
+      html[data-droplet="on"] .sp-modal-card {
+        border-radius: max(16px, var(--ui-radius, 18px)) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        box-shadow: inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.38),
+                    inset 0 -2px 5px 0 rgba(0, 0, 0, 0.3),
+                    0 8px 28px -4px rgba(0, 180, 255, 0.18) !important;
+        backdrop-filter: blur(24px) saturate(145%) !important;
+        transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+      }
+
+      html[data-droplet="on"] .yt-music-card:hover,
+      html[data-droplet="on"] .qp-tile:hover,
+      html[data-droplet="on"] .wf-opt-card:hover {
+        transform: translateY(-2px) scale(1.01);
+        border-color: rgba(255, 255, 255, 0.5) !important;
+        box-shadow: inset 0 2px 3px 0 rgba(255, 255, 255, 0.55),
+                    inset 0 -2px 6px 0 rgba(0, 0, 0, 0.35),
+                    0 12px 36px -4px rgba(0, 210, 255, 0.35) !important;
+      }
+
+      /* Droplet track rows - smooth table list */
+      html[data-droplet="on"] .trow,
+      html[data-droplet="on"] .res-row {
+        border-radius: 8px !important;
+        border: 1px solid transparent !important;
+        box-shadow: none !important;
+      }
+      html[data-droplet="on"] .trow:hover,
+      html[data-droplet="on"] .res-row:hover {
+        background: color-mix(in srgb, var(--accent) 8%, transparent) !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+      }
+      html[data-droplet="on"] .trow.cur {
+        background: color-mix(in srgb, var(--accent) 14%, transparent) !important;
+      }
+
+      /* Liquid Player Bar (Deck) - seamless flush bottom */
+      html[data-droplet="on"] .deck {
+        margin: 0 !important;
+        border-radius: 0 !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+        box-shadow: inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.38),
+                    inset 0 -1px 3px 0 rgba(0, 0, 0, 0.25),
+                    0 -6px 28px rgba(0, 170, 255, 0.15) !important;
+        backdrop-filter: blur(28px) saturate(160%) !important;
+      }
+
+      /* Transparent Add Folder Button */
+      .import-btn,
+      html[data-apple-glass="on"] .import-btn,
+      html[data-droplet="on"] .import-btn {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: 1px dashed var(--border-strong) !important;
+        color: var(--text-primary) !important;
+      }
+      .import-btn:hover,
+      html[data-apple-glass="on"] .import-btn:hover,
+      html[data-droplet="on"] .import-btn:hover {
+        background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
+        border-style: solid !important;
+        border-color: var(--accent) !important;
+        color: var(--accent) !important;
+        box-shadow: none !important;
+        transform: none !important;
+      }
+
+      /* Liquid Buttons & Play Controls */
+      html[data-droplet="on"] .play-fab,
+      html[data-droplet="on"] .hero-play-btn {
+        background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.55) 0%, transparent 55%), var(--accent) !important;
+        border: 1px solid rgba(255, 255, 255, 0.5) !important;
+        box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.65),
+                    inset 0 -3px 6px rgba(0, 0, 0, 0.35),
+                    0 6px 24px rgba(0, 220, 255, 0.45) !important;
+        border-radius: 999px !important;
+        transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.15s ease;
+      }
+
+      html[data-droplet="on"] .play-fab:hover,
+      html[data-droplet="on"] .hero-play-btn:hover {
+        transform: scale(1.05);
+        box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8),
+                    inset 0 -3px 6px rgba(0, 0, 0, 0.35),
+                    0 8px 30px rgba(0, 240, 255, 0.6) !important;
+      }
+
+      /* Liquid Droplet Search Bar */
+      html[data-droplet="on"] .sidebar-search {
+        border-radius: 999px !important;
+        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.4),
+                    inset 0 -1px 3px rgba(0, 0, 0, 0.25),
+                    0 4px 18px rgba(0, 180, 255, 0.14) !important;
+      }
+
+      /* Water Drop Pill in Dynamic Island - NO outer color or shadows */
+      html[data-droplet="on"] .island-pill {
+        border-radius: 999px !important;
+        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        box-shadow: inset 0 1.5px 2px rgba(255, 255, 255, 0.5),
+                    inset 0 -1.5px 3px rgba(0, 0, 0, 0.35) !important;
+        background: radial-gradient(circle at 45% 20%, rgba(255, 255, 255, 0.18), transparent 70%), var(--isl-bg, #000000) !important;
+      }
+
+      html[data-droplet="on"] .island-card {
+        border-radius: var(--isl-r, 28px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.45),
+                    inset 0 -2px 5px rgba(0, 0, 0, 0.35) !important;
+      }
+
+      /* Water Sliders - Clean, no white ring border around thumbs */
+      html[data-droplet="on"] input[type="range"] {
+        outline: none !important;
+      }
+      html[data-droplet="on"] input[type="range"]::-webkit-slider-thumb {
+        border: none !important;
+        outline: none !important;
+        box-shadow: 0 1.5px 5px rgba(0, 0, 0, 0.35) !important;
+        background: radial-gradient(circle at 35% 30%, #ffffff 0%, var(--accent) 75%) !important;
+      }
+      html[data-droplet="on"] input[type="range"]:focus,
+      html[data-droplet="on"] input[type="range"]:focus-visible {
+        outline: none !important;
+      }
+
+      /* Interactive Water Ripple effect container */
+      .water-ripple-layer {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 999999;
+        overflow: hidden;
+      }
+
+      .water-drop-ripple {
+        position: absolute;
+        border-radius: 50%;
+        transform: translate(-50%, -50%) scale(0);
+        pointer-events: none;
+        border: 1.5px solid rgba(0, 230, 255, 0.65);
+        box-shadow: inset 0 0 10px rgba(0, 230, 255, 0.45), 0 0 14px rgba(0, 230, 255, 0.35);
+        animation: water-ripple-expand 0.55s cubic-bezier(0.1, 0.85, 0.25, 1) forwards;
+      }
+
+      @keyframes water-ripple-expand {
+        0% {
+          width: 8px;
+          height: 8px;
+          opacity: 0.9;
+          transform: translate(-50%, -50%) scale(0.2);
+        }
+        50% {
+          opacity: 0.6;
+        }
+        100% {
+          width: 130px;
+          height: 130px;
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+    </style>
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+    <div class="water-ripple-layer" id="water-ripple-layer" aria-hidden="true"></div>
+
+    <script>
+      (function() {
+        // Interactive water ripple on mouse click when data-ripple="on", data-droplet="on", or data-apple-glass="on"
+        window.addEventListener("pointerdown", function(e) {
+          if (
+            window.location.pathname.includes("/island") ||
+            document.documentElement.classList.contains("island-transparent-mode") ||
+            document.body.classList.contains("island-transparent-mode")
+          ) {
+            return;
+          }
+          var d = document.documentElement.dataset;
+          if (d.ripple !== "on") return;
+          var container = document.getElementById("water-ripple-layer");
+          if (!container) return;
+          var ripple = document.createElement("div");
+          ripple.className = "water-drop-ripple";
+          if (d.appleGlass === "on" && d.droplet !== "on") {
+            ripple.style.borderColor = "rgba(255, 255, 255, 0.6)";
+            ripple.style.boxShadow = "inset 0 0 12px rgba(255, 255, 255, 0.4), 0 0 16px rgba(255, 255, 255, 0.25)";
+          }
+          ripple.style.left = e.clientX + "px";
+          ripple.style.top = e.clientY + "px";
+          container.appendChild(ripple);
+          setTimeout(function() {
+            if (ripple.parentNode) ripple.parentNode.removeChild(ripple);
+          }, 600);
+        });
+      })();
+    </script>
+  </body>
+</html>

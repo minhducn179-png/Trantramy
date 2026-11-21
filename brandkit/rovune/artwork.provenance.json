@@ -1,0 +1,14 @@
+{
+  "file": "brand-art.png",
+  "origin": "Generated in this session with the generate_image tool, Antigravity signed-in image generation.",
+  "type": "AI-generated abstract brand artwork, not a product screenshot or real album cover",
+  "requestedAspectRatio": "3:2",
+  "prompt": "Create a finished abstract brand key visual for ROVUNE, a personal desktop music player. NO TEXT, NO LETTERS, NO WORDS, NO LOGOS, NO UI, NO ICONS, NO WATERMARKS. Landscape art direction: a sculptural open loop made from one continuous broad folded satin ribbon, asymmetric half-loop interrupted by a crisp intentional gap. Think a physical strip of recorded sound, beautifully formed but not a literal cassette, vinyl disc, equalizer, headphones or musical note. A rich near-black graphite background #101010 owns most of the frame. The ribbon is muted warm apricot #FFC799 on its illuminated face and very dark graphite on its reverse, with only a tiny reflected edge of pale mint #99FFE4. Tactile matte-satin surface, precise edges, subtle fine film grain, studio side lighting, soft directional shadow, material depth, restrained editorial art photography, not shiny CGI, not liquid chrome, no rainbow gradient, no neon glow, no concentric tunnels. The loop sits in the right two-thirds with generous empty charcoal space on the left. Dark, self-assured, intimate, like a contemporary independent record label's cover art. This is reusable authored brand artwork, not a brand board. Full-resolution polished final image, no border, no decorative interface framing.",
+  "boardSvg": "brandboard.svg",
+  "boardRaster": "brandboard.png",
+  "boardRasterOrigin": "Chromium screenshot of the authored brandboard.svg with embedded fonts and brand-art.png; not a separately generated logo",
+  "themeRaster": "theme-compatibility.png",
+  "themeRasterOrigin": "Chromium screenshot of theme-compatibility.svg using the app's actual palette data",
+  "iconRasters": ["app-icon-512.png", "app-icon-32.png"],
+  "iconRasterOrigin": "Chromium OffscreenCanvas rasterization of app-icon.svg at 512px and 32px; transparent corners verified with canvas alpha=0"
+}
