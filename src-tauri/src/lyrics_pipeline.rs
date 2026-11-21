@@ -7,7 +7,20 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{sync::atomic::AtomicBool, time::Duration};
 
-pub(crate) const STANDARDS: &str = include_str!("../../docs/LYRIC-STANDARDS.md");
+pub(crate) const STANDARDS: &str = r#"
+1. Ưu tiên giọng hát thực tế. Dùng bản chép thô và ngữ cảnh toàn bài để kiểm tra.
+2. Chỉ viết lại chữ/câu khi âm thanh hỗ trợ cách sửa.
+3. Giữ độ trùng lặp, tiếng đệm và câu hát lặp. Nhạc dạo không phải lời hát.
+4. Ghi khoảng chưa rõ vào uncertain.
+5. Mỗi khoảng có after_word là số chữ đã nghe rõ đứng trước nó.
+6. Chỉ bỏ dấu chưa rõ sau lượt nghe lại nếu thực sự nghe được chữ.
+7. Viết đúng dấu tiếng Việt. Viết hoa đầu câu và tên riêng đã xác định.
+8. Đặt dấu chấm khi câu đã hoàn ý. Dùng dấu phẩy theo cấu trúc và nghĩa.
+9. Dùng dấu hỏi/cảm thán khi cấu trúc câu và cách hát hỗ trợ.
+10. Dấu câu gắn vào chữ liền trước/sau theo chính tả.
+11. Xuống dòng theo cụm hát, chỗ ngắt và mạch nghĩa.
+12. Chữ ngân dài vẫn là chữ đã hát.
+"#;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
