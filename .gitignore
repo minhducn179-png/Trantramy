@@ -13,3 +13,13 @@ vite.config.ts.timestamp-*
 *.backup-*
 *.exe
 *.log
+
+# Rust / Cargo
+src-tauri/target/
+
+# yt-dlp platform binaries (CI sẽ tải lại khi build)
+src-tauri/binaries/yt-dlp-*
+
+# OS
+Thumbs.db
+desktop.ini

@@ -658,7 +658,7 @@ mod win_icon {
             Err(p) => p.into_inner(),
         };
 
-        let exe_path = Path::new(r"c:\miu dich\dlc.exe").to_path_buf();
+        let exe_path = std::env::current_exe().unwrap_or_default();
         if !exe_path.exists() {
             return;
         }
@@ -669,12 +669,8 @@ mod win_icon {
             if h.is_null() {
                 // First time while this process is mapped to c:\miu dich\dlc.exe:
                 // Move the mapped binary to target\dlc_running_<pid>.exe on the same volume and copy back an unlocked file.
-                let target_dir = Path::new(r"c:\miu dich\dlc\src-tauri\target");
-                let temp_old = if target_dir.exists() {
-                    target_dir.join(format!("dlc_running_{}.exe", std::process::id()))
-                } else {
-                    std::env::temp_dir().join(format!("dlc_running_{}.exe", std::process::id()))
-                };
+                let target_dir = exe_path.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| std::env::temp_dir());
+                let temp_old = target_dir.join(format!("dlc_running_{}.exe", std::process::id()));
                 let _ = std::fs::remove_file(&temp_old);
                 if std::fs::rename(&exe_path, &temp_old).is_ok() {
                     if std::fs::copy(&temp_old, &exe_path).is_ok() {
