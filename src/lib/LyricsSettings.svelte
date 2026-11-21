@@ -1,12 +1,11 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { Download, ShieldCheck, Square, AudioLines, Sparkles, FolderOpen, Disc3, Palette, Check, SlidersHorizontal, Maximize2, PanelRight, Mic2 } from "@lucide/svelte";
   import { onMount } from "svelte";
   import { api, type LyricsSettings } from "$lib/api";
   import { lyricsState } from "$lib/lyrics.svelte";
   import { lyricsUi, type LyricsLayoutMode, type VinylSkin, type LyricsFontSize, type LyricsDimInactive, type LyricsBgStyle, type LyricsWindowMode } from "$lib/lyricsUiConfig.svelte";
   import LyricsBatch from "$lib/LyricsBatch.svelte";
-  import lyricStandards from "../../docs/LYRIC-STANDARDS.md?raw";
-  const standardRules = lyricStandards.split(/\r?\n/).filter(line => /^\d+\.\s/.test(line)).map(line => line.replace(/^\d+\.\s+/, '').replaceAll('`', ''));
+  import { standardRules } from "$lib/lyricsStandards";
 
   // --- Tab state ---
   let activeTab = $state<'ui' | 'ai'>('ui');

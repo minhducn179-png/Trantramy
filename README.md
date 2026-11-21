@@ -2,203 +2,120 @@
 
 # 🎵 Trantramy
 
-**Ứng dụng nghe nhạc & karaoke cá nhân — phong cách đĩa than vinyl**
+**Ứng dụng nghe nhạc & phòng karaoke cá nhân — phong cách đĩa than vinyl**
 
-[![Build](https://github.com/minhducn179-png/Trantramy/actions/workflows/build.yml/badge.svg)](https://github.com/minhducn179-png/Trantramy/actions/workflows/build.yml)
-![Version](https://img.shields.io/badge/version-0.1.8-a855f7)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
-![License](https://img.shields.io/badge/license-Private-red)
+[![GitHub Release](https://img.shields.io/github/v/release/minhducn179-png/Trantramy?color=a855f7&label=Phiên%20bản)](https://github.com/minhducn179-png/Trantramy/releases/latest)
+[![Build Status](https://github.com/minhducn179-png/Trantramy/actions/workflows/build.yml/badge.svg)](https://github.com/minhducn179-png/Trantramy/actions/workflows/build.yml)
+![Hỗ trợ nền tảng](https://img.shields.io/badge/Hỗ%20trợ-Windows%20%7C%20macOS%20%7C%20Linux-3b82f6)
 
 </div>
 
 ---
 
-## ✨ Tính năng nổi bật
+## 📥 HƯỚNG DẪN TẢI VỀ (CỰC KỲ ĐƠN GIẢN)
 
-| Tính năng | Mô tả |
-|-----------|-------|
-| 🎙️ **Phòng Karaoke** | Lời bài hát sáng lên từng chữ theo nhịp nhạc, 3 chế độ hiển thị |
-| 📀 **Đĩa than Vinyl** | Đĩa xoay với cần đĩa cơ học — kéo để phát/dừng, ảnh bìa phủ toàn mặt đĩa |
-| 🌐 **Stream Online** | Tìm kiếm & phát trực tiếp từ YouTube, SoundCloud, Spotify |
-| 🎚️ **Equalizer** | Bộ chỉnh âm 10 dải tần với preset có sẵn |
-| 🏝️ **Dynamic Island** | Lời bài hát thu nhỏ chạy trên thanh tiêu đề cửa sổ |
-| 🎨 **Giao diện tùy biến** | Màu sắc, skin vinyl, nền, font chữ — lưu nhiều bộ cài |
-| 📋 **Hàng chờ & Playlist** | Quản lý danh sách phát theo thứ tự |
-| 🔊 **Waveform** | Hiển thị sóng âm theo thời gian thực |
+Bạn không cần biết lập trình hay gõ lệnh gì cả. Hãy chọn đúng hệ điều hành máy tính của bạn và làm theo các bước bên dưới:
+
+👉 **[BẤM VÀO ĐÂY ĐỂ MỞ TRANG TẢI VỀ CÁC BẢN CÀI ĐẶT](https://github.com/minhducn179-png/Trantramy/releases/latest)**
 
 ---
 
-## 📥 Tải về & Cài đặt
+### 🪟 1. Dành cho máy tính Windows (10 / 11)
 
-### Windows
-1. Tải `Trantramy.exe` từ [Releases](https://github.com/minhducn179-png/Trantramy/releases)
-2. Double-click để chạy — **không cần cài đặt**
+* **Bước 1:** Bấm vào liên kết **[Trang phát hành Trantramy](https://github.com/minhducn179-png/Trantramy/releases/latest)**.
+* **Bước 2:** Cuộn xuống mục **Assets** (Tệp đính kèm) ở cuối bản phát hành.
+* **Bước 3:** Bấm tải tệp **`Trantramy.exe`** (Bản chạy ngay không cần cài đặt) hoặc **`Trantramy-Setup.exe`** (Bộ cài đặt).
+* **Bước 4:** Bấm đúp chuột (Double-click) vào tệp vừa tải về là phần mềm sẽ mở lên ngay!
 
-### macOS
-1. Tải `Trantramy.dmg` từ [Releases](https://github.com/minhducn179-png/Trantramy/releases)
-2. Mở file `.dmg` → kéo **Trantramy** vào thư mục **Applications**
-3. Lần đầu mở: chuột phải → **Open** (bỏ qua cảnh báo Gatekeeper)
-
-### Linux
-1. Tải `Trantramy.AppImage` từ [Releases](https://github.com/minhducn179-png/Trantramy/releases)
-2. Cấp quyền thực thi:
-   ```bash
-   chmod +x Trantramy.AppImage
-   ./Trantramy.AppImage
-   ```
-
-> **Yêu cầu hệ thống:** Windows 10+, macOS 12+, Ubuntu 22.04+ · RAM 2GB · 50MB dung lượng
+> 💡 *Lưu ý:* Nếu Windows hiện bảng xanh thông báo *"Windows protected your PC"* (do phần mềm mới chưa đăng ký chữ ký số đắt tiền của Microsoft), bạn chỉ cần bấm vào dòng chữ **More info** (Thêm thông tin) rồi bấm **Run anyway** (Vẫn chạy).
 
 ---
 
-## 🚀 Hướng Dẫn Sử Dụng
+### 🍎 2. Dành cho máy tính Mac (Apple Silicon M1/M2/M3/M4 & Intel)
 
-### Thêm nhạc vào thư viện
-
-| Cách | Thao tác |
-|------|----------|
-| **Kéo thả** | Kéo file nhạc / thư mục từ File Explorer vào cửa sổ app |
-| **Thêm thư mục** | Nhấn 📁 trên thanh điều hướng → chọn thư mục nhạc |
-| **Dán link** | Dán URL YouTube / SoundCloud / Spotify vào ô tìm kiếm → Enter |
-
----
-
-### 🎙️ Phòng Karaoke
-
-Nhấn icon 📀 trên thanh phát nhạc để vào phòng karaoke.
-
-**Đĩa than vinyl:**
-- **Click vào đĩa** → Phát / Tạm dừng
-- **Kéo cần đĩa vào đĩa** → Phát nhạc
-- **Kéo cần đĩa ra** → Tạm dừng
-- Đĩa quay, ảnh bìa album phủ toàn mặt và quay cùng
-
-**Chế độ hiển thị lời** — nhấn icon 👁 để chuyển:
-- **Flow** — Hiện 3 dòng: trước / đang hát / kế tiếp
-- **Vinyl** — Lời kết hợp cùng đĩa vinyl
-- **Stage** — Toàn màn hình, chữ lớn
-
-**Gọi bài & Hàng chờ:**
-- Nhấn 📋 → Tab **Gọi bài**: tìm theo tên / ca sĩ → thêm vào hàng chờ
-- Tab **Hàng chờ**: xem và sắp xếp lại thứ tự
+* **Bước 1:** Vào **[Trang phát hành Trantramy](https://github.com/minhducn179-png/Trantramy/releases/latest)**.
+* **Bước 2:** Tải tệp có đuôi **`.dmg`**:
+  * Nếu máy Mac chip **M1/M2/M3/M4**: Tải bản `Trantramy-aarch64.dmg`.
+  * Nếu máy Mac chip **Intel**: Tải bản `Trantramy-x86_64.dmg`.
+* **Bước 3:** Mở tệp `.dmg` vừa tải, kéo biểu tượng **Trantramy** thả vào thư mục **Applications** (Ứng dụng).
+* **Bước 4 (Mở lần đầu):** Nhấp chuột phải (hoặc giữ phím `Control` + bấm chuột) vào biểu tượng Trantramy trong Applications rồi chọn **Open** (Mở).
 
 ---
 
-### 🌐 Stream Trực Tuyến
+### 🐧 3. Dành cho máy tính Linux (Ubuntu, Debian, Fedora, Arch...)
 
-1. Nhấn 🌐 **Trực tuyến** trên thanh điều hướng
-2. Nhập tên bài hát hoặc dán link trực tiếp:
-   - `https://youtube.com/watch?v=...`
-   - `https://soundcloud.com/...`
-   - `https://open.spotify.com/track/...`
-3. Nhấn kết quả để **nghe ngay** hoặc **+** để thêm vào hàng chờ
-4. Nhấn ⬇️ để **tải về máy** và thêm vào thư viện
-
----
-
-### 🎚️ Equalizer
-
-Nhấn 🎚️ trên thanh phát nhạc → kéo 10 dải tần hoặc chọn preset:
-`Pop · Rock · Classical · Bass Boost · Vocal · Flat`
+* **Bước 1:** Vào **[Trang phát hành Trantramy](https://github.com/minhducn179-png/Trantramy/releases/latest)**.
+* **Bước 2:** Tải tệp **`Trantramy.AppImage`** (hoặc gói `.deb` nếu dùng Ubuntu/Debian).
+* **Bước 3:** Cấp quyền thực thi và mở ứng dụng:
+  ```bash
+  chmod +x Trantramy.AppImage
+  ./Trantramy.AppImage
+  ```
 
 ---
 
-### 🏝️ Dynamic Island
+## ✨ CÁC TÍNH NĂNG NỔI BẬT
 
-Thanh lời bài hát thu nhỏ hiển thị ngay trên tiêu đề cửa sổ — nhấn vào để quay lại phòng karaoke đầy đủ.
-Bật/tắt tại: **⚙️ Cài đặt → Dynamic Island**
-
----
-
-### 🎨 Tuỳ Chỉnh Giao Diện
-
-Vào **⚙️ Cài đặt → Giao diện**:
-
-| Tuỳ chọn | Lựa chọn |
-|----------|----------|
-| **Nền** | Apple Glass · Glow · OLED · Hình nền tuỳ chọn |
-| **Skin vinyl** | Marble · Album · Black · Cyberpunk · Gold |
-| **Màu đĩa** | Color picker tự do |
-| **Tốc độ quay** | 33 / 45 / 78 RPM |
-| **Font lời** | Nhỏ / Vừa / Lớn |
+| Tính năng | Chi tiết |
+|-----------|----------|
+| 🎙️ **Phòng Karaoke chuyên nghiệp** | Lời bài hát chạy sáng từng chữ theo giọng ca sĩ (Word-by-word synced lyrics). Tự động bỏ nhãn thừa ([intro], [verse]), không hiện chấm nhảy gây rối mắt. |
+| 📀 **Đĩa than Vinyl & Cần đĩa cơ** | Mặt đĩa cẩm thạch tím pastel sang trọng. Cần đĩa (Tonearm) chuẩn kim loại chrome: kéo cần đặt lên đĩa để phát nhạc, nhấc cần ra để tạm dừng. |
+| 🌐 **Stream & Tìm kiếm Online** | Tìm kiếm và nghe trực tiếp không giới hạn từ **YouTube** và **SoundCloud**. Dán trực tiếp link bài hát/playlist để phát ngay. |
+| ⬇️ **Tải nhạc về máy** | Bấm nút tải xuống bên cạnh bài hát để lưu vào thư viện nghe offline khi không có mạng. |
+| 🎚️ **Equalizer 10 dải tần** | Tùy chỉnh chất âm theo tai nghe/loa ngoài với các bộ lọc: Bass Boost, Pop, Rock, Vocal, Acoustic... |
+| 🏝️ **Dynamic Island** | Hiển thị lời bài hát và sóng nhạc mini chạy trên thanh tiêu đề khi thu nhỏ cửa sổ. |
+| 🎨 **Tùy biến giao diện** | Tùy ý đổi màu đĩa than, tốc độ quay (33 / 45 / 78 RPM), hình nền kính mờ Apple Glass, OLED... |
 
 ---
 
-### ⌨️ Phím tắt
+## 📖 HƯỚNG DẪN SỬ DỤNG CHI TIẾT
 
-| Phím | Chức năng |
-|------|-----------|
-| `Space` | Phát / Tạm dừng |
-| `← →` | Tua lùi / Tua tới 5 giây |
-| `↑ ↓` | Tăng / Giảm âm lượng |
-| `Ctrl+K` | Mở phòng karaoke |
-| `Esc` | Đóng panel |
-| `F11` | Toàn màn hình |
+### 1. Thêm nhạc vào ứng dụng
+* **Kéo thả:** Nắm giữ file nhạc (`.mp3`, `.flac`, `.wav`, `.m4a`) từ máy tính rồi thả thẳng vào cửa sổ Trantramy.
+* **Thêm thư mục:** Bấm biểu tượng 📁 ở thanh bên trái để chọn cả thư mục nhạc lưu sẵn trên máy.
+* **Nghe từ YouTube/SoundCloud:** Bấm mục **🌐 Trực tuyến** ở cột bên trái, nhập tên bài hát hoặc dán link YouTube vào ô tìm kiếm rồi nhấn Enter.
+
+### 2. Sử dụng Phòng Karaoke
+* Bấm vào biểu tượng đĩa than **📀** ở góc dưới thanh phát nhạc.
+* **Chuyển chế độ xem lời:** Bấm biểu tượng con mắt **👁** để chuyển đổi qua lại giữa:
+  * **Flow (Khuyên dùng):** Xem 3 dòng liên tục (dòng vừa hát, dòng đang hát sáng rực theo nhịp, dòng kế tiếp).
+  * **Vinyl:** Lời bài hát đặt cạnh đĩa than đang quay.
+  * **Stage:** Chữ phóng to toàn màn hình cho phòng tiệc.
+* **Chọn bài hát tiếp theo:** Bấm **📋 Gọi bài** để tìm bài mới hoặc sắp xếp danh sách chờ hát.
+
+### 3. Phím tắt tiện lợi
+* `Phím cách (Space)`: Phát nhạc / Tạm dừng
+* `Mũi tên Trái / Phải (← / →)`: Tua lùi / Tua nhanh 5 giây
+* `Mũi tên Lên / Xuống (↑ / ↓)`: Tăng / Giảm âm lượng
+* `Ctrl + K`: Bật/Tắt nhanh phòng karaoke
+* `F11`: Bật/Tắt chế độ toàn màn hình (Fullscreen)
+* `Esc`: Đóng các cửa sổ cài đặt / bảng phụ
 
 ---
 
-## 🏗️ Build từ Source
+## ⚙️ XÂY DỰNG TỪ MÃ NGUỒN (DÀNH CHO LẬP TRÌNH VIÊN)
 
-### Yêu cầu
-- [Node.js 20+](https://nodejs.org)
-- [Rust stable](https://rustup.rs)
-- Trên Linux: `libwebkit2gtk-4.1-dev libssl-dev libsecret-1-dev`
-
-### Các bước
+Nếu bạn là lập trình viên muốn tự biên dịch phần mềm từ source code:
 
 ```bash
-# Clone repo
+# 1. Clone mã nguồn
 git clone https://github.com/minhducn179-png/Trantramy.git
 cd Trantramy
 
-# Cài npm dependencies
+# 2. Cài đặt các thư viện Node.js
 npm install
 
-# Tải yt-dlp binary cho nền tảng của bạn
-# Windows:
-curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe \
-  -o src-tauri/binaries/yt-dlp-x86_64-pc-windows-msvc.exe
+# 3. Chạy ở chế độ phát triển (Development)
+npm run tauri dev
 
-# macOS ARM:
-curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos \
-  -o src-tauri/binaries/yt-dlp-aarch64-apple-darwin && \
-  chmod +x src-tauri/binaries/yt-dlp-aarch64-apple-darwin
-
-# Linux:
-curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux \
-  -o src-tauri/binaries/yt-dlp-x86_64-unknown-linux-gnu && \
-  chmod +x src-tauri/binaries/yt-dlp-x86_64-unknown-linux-gnu
-
-# Build toàn bộ app
+# 4. Đóng gói bản cài đặt (Build Release)
 npm run tauri build
 ```
-
-### CI/CD tự động
-
-Mỗi lần push lên `main`, GitHub Actions tự động build cho cả 3 nền tảng.
-Khi tạo tag `v*` (ví dụ `v0.1.9`), sẽ tự tạo GitHub Release với file tải về.
-
-```bash
-git tag v0.1.9
-git push origin v0.1.9
-```
-
----
-
-## 📁 Dữ liệu ứng dụng
-
-| Nền tảng | Vị trí |
-|----------|--------|
-| Windows | `%APPDATA%\com.trantramy.player\` |
-| macOS | `~/Library/Application Support/com.trantramy.player/` |
-| Linux | `~/.local/share/com.trantramy.player/` |
-
-> Sao lưu thư mục này để không mất thư viện nhạc và cài đặt khi cài lại app.
 
 ---
 
 <div align="center">
 
-**Trantramy v0.1.8** · Được phát triển bởi **Tran Tra My** · © 2026
+**Trantramy** · Phát triển với niềm đam mê âm nhạc bởi **Tran Tra My** · 2026
 
 </div>
