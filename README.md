@@ -24,7 +24,7 @@ Bạn không cần biết lập trình hay gõ lệnh gì cả. Hãy chọn đú
 
 * **Bước 1:** Bấm vào liên kết **[Trang phát hành Trantramy](https://github.com/minhducn179-png/Trantramy/releases/latest)**.
 * **Bước 2:** Cuộn xuống mục **Assets** (Tệp đính kèm) ở cuối bản phát hành.
-* **Bước 3:** Bấm tải tệp **`Trantramy.exe`** (Bản chạy ngay không cần cài đặt) hoặc **`Trantramy-Setup.exe`** (Bộ cài đặt).
+* **Bước 3:** Bấm tải tệp **`Trantramy.exe`** (Tải về bấm mở chạy ngay, không cần cài đặt).
 * **Bước 4:** Bấm đúp chuột (Double-click) vào tệp vừa tải về là phần mềm sẽ mở lên ngay!
 
 > 💡 *Lưu ý:* Nếu Windows hiện bảng xanh thông báo *"Windows protected your PC"* (do phần mềm mới chưa đăng ký chữ ký số đắt tiền của Microsoft), bạn chỉ cần bấm vào dòng chữ **More info** (Thêm thông tin) rồi bấm **Run anyway** (Vẫn chạy).
