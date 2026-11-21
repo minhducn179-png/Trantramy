@@ -1,6 +1,6 @@
 {
   "name": "dlc",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "dlc desktop music player",
   "type": "module",
   "scripts": {

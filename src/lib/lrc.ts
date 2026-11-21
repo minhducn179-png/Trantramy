@@ -82,12 +82,29 @@ function interpolateWords(line: LyricLine, nextLineTime?: number): void {
     return;
   }
 
-  const gap = nextLineTime !== undefined ? nextLineTime - line.time : Math.max(2.5, wordsArr.length * 0.55);
-  const sungDur = gap > 0 ? Math.min(gap, Math.max(1.8, wordsArr.length * 0.48)) : Math.max(1.8, wordsArr.length * 0.48);
+  // Căn thời lượng hát tự nhiên theo khoảng cách câu
+  let sungDur: number;
+  if (nextLineTime !== undefined && nextLineTime > line.time) {
+    const gap = nextLineTime - line.time;
+    if (gap <= 2.2) {
+      sungDur = gap * 0.92;
+    } else if (gap <= 5.0) {
+      sungDur = gap - 0.45;
+    } else if (gap <= 8.5) {
+      sungDur = Math.max(wordsArr.length * 0.65, gap - 0.9);
+    } else {
+      sungDur = Math.min(gap - 1.8, Math.max(2.4, wordsArr.length * 0.75));
+    }
+  } else {
+    sungDur = Math.max(2.5, wordsArr.length * 0.7);
+  }
 
-  const weights = wordsArr.map((w) => {
+  const weights = wordsArr.map((w, idx) => {
     const clean = w.replace(/[^\p{L}\p{N}]/gu, "");
-    return Math.max(1, 1 + 0.12 * Math.max(0, clean.length - 2));
+    let wt = Math.max(1, 1 + 0.14 * Math.max(0, clean.length - 2));
+    if (idx === wordsArr.length - 1) wt *= 1.35;
+    else if (/[,;.!?~-]$/.test(w)) wt *= 1.25;
+    return wt;
   });
   const totalWeight = weights.reduce((a, b) => a + b, 0);
 

@@ -306,14 +306,25 @@
   oncancel={event => { event.preventDefault(); onclose(); }}
 >
   <div class="room-background" aria-hidden="true">
-    {#if lyricsUi.config.bgStyle === 'glow'}
+    {#if theme.config.bgImage}
+      <!-- Nền tùy biến khớp 100% với cài đặt giao diện đã điều chỉnh -->
+      <img
+        class="stage-backdrop custom-wallpaper"
+        class:is-blurred={(theme.config.bgImageBlur ?? 0) > 0}
+        src={coverSrc(theme.config.bgImage)}
+        alt=""
+      />
+      <div class="backdrop-tint custom-tint"></div>
+    {:else if lyricsUi.config.bgStyle === 'glow'}
       <div class="glow-orb glow-1" style:background={cover ? `url(${cover})` : 'var(--accent)'}></div>
       <div class="glow-orb glow-2" style:background={cover ? `url(${cover})` : 'var(--accent)'}></div>
+      <div class="backdrop-tint"></div>
+    {:else if backdrop}
+      <img class="stage-backdrop album-backdrop" src={backdrop} alt="" />
+      <div class="backdrop-tint" class:glass-tint={lyricsUi.config.bgStyle === 'apple-glass'}></div>
+    {:else}
+      <div class="backdrop-tint"></div>
     {/if}
-    {#if backdrop && (lyricsUi.config.bgStyle === 'wallpaper' || lyricsUi.config.bgStyle === 'apple-glass')}
-      <img class="stage-backdrop" class:wallpaper={Boolean(theme.config.bgImage)} src={backdrop} alt="" />
-    {/if}
-    <div class="backdrop-tint" class:glass-tint={lyricsUi.config.bgStyle === 'apple-glass'}></div>
   </div>
 
   {#if controlsVisible}
@@ -660,8 +671,9 @@
               {#if line?.text}
                 {#each currentDisplayWords as word, wIdx}
                   {@const isWordActive = wIdx === activeWordIndex}
-                  <span class="sung-word" class:active-word={isWordActive} class:done={wordFillPercent(word, position) >= 100} style:--fill={`${wordFillPercent(word, position)}%`}>
-                    <span>{word.text}</span>
+                  {@const fill = wordFillPercent(word, position)}
+                  <span class="sung-word" class:active-word={isWordActive} class:done={fill >= 100} style:--fill={`${fill}%`}>
+                    <span class="word-chars">{word.text}</span>
                   </span>{#if wIdx < currentDisplayWords.length - 1}{' '}{/if}
                 {/each}
               {:else}<span class="instrumental">♪ Nhạc dạo ♪</span>{/if}
@@ -760,7 +772,7 @@
     border-radius: clamp(20px, 2.6vw, 34px);
     box-shadow: 0 28px 80px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(255, 255, 255, 0.25);
     color: var(--text-primary);
-    background: var(--bg-canvas);
+    background: transparent;
     font: 14px var(--font-sans);
     overflow: hidden;
     transition: inset 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -785,20 +797,47 @@
     isolation: isolate;
   }
   .karaoke-room::backdrop {
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   .karaoke-room.focused { grid-template-rows: minmax(0, 1fr); }
 
-  /* Background Modes */
+  /* Background Modes - Khớp 100% với cài đặt nền đã điều chỉnh */
   .room-background { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .stage-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+    object-fit: var(--bg-image-fit, cover);
+    object-position: var(--bg-image-pos, center);
+    filter: blur(var(--bg-image-blur, 0px))
+      brightness(var(--bg-image-brightness, 1))
+      saturate(var(--bg-image-saturation, 1.08));
+    transition: filter 0.2s ease, transform 0.2s ease;
+  }
+  .stage-backdrop.is-blurred {
+    transform: scale(1.06);
+  }
+  .stage-backdrop.album-backdrop {
+    filter: blur(48px) brightness(0.55) saturate(1.4);
+    transform: scale(1.15);
+  }
   .backdrop-tint { position: absolute; inset: 0; background: var(--bg-overlay-tint, var(--bg-canvas)); opacity: 0.88; }
+  .backdrop-tint.custom-tint {
+    /* Khớp độ mờ lớp phủ theo cài đặt người dùng */
+    opacity: var(--bg-image-dim, 0.48);
+    transition: opacity 0.18s ease, background 0.2s ease;
+  }
   .backdrop-tint.glass-tint {
     background: color-mix(in srgb, var(--bg-canvas) 78%, transparent);
     backdrop-filter: blur(36px) saturate(160%);
     -webkit-backdrop-filter: blur(36px) saturate(160%);
-    opacity: 0.95;
+    opacity: 0.85;
   }
   .bg-oled .backdrop-tint { background: #000000; opacity: 0.98; }
   .glow-orb { position: absolute; width: 600px; height: 600px; border-radius: 50%; filter: blur(140px); opacity: 0.35; background-size: cover; }
@@ -1111,14 +1150,38 @@
     font-size: clamp(18px, 2.1vw, 28px); opacity: 0.35; transform: translateX(24px);
   }
 
-  /* Bouncing Block Cursor on Word (Con trỏ nhảy chữ như trong video!) */
-  .words-container { position: relative; display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
-  .sung-word { position: relative; display: inline-block; }
-  .sung-word .word-chars {
-    background: linear-gradient(90deg, var(--text-primary, #ffffff) var(--fill), color-mix(in srgb, var(--text-primary, #ffffff) 45%, transparent) var(--fill));
-    background-clip: text; -webkit-background-clip: text; color: transparent;
+  /* Karaoke Word-by-Word Highlight chạy chuẩn từng chữ theo nhip */
+  .words-container { position: relative; display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+  .sung-word {
+    position: relative;
+    display: inline-block;
+    transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .sung-word.done .word-chars { background: none; color: var(--text-primary, #ffffff); }
+  .sung-word.active-word {
+    transform: scale(1.06);
+  }
+  .sung-word .word-chars {
+    display: inline-block;
+    background: linear-gradient(
+      90deg,
+      #ffffff 0%,
+      #ffffff var(--fill),
+      rgba(255, 255, 255, 0.38) var(--fill),
+      rgba(255, 255, 255, 0.38) 100%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    transition: filter 0.15s ease;
+  }
+  .sung-word.active-word .word-chars {
+    filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent, #a855f7) 75%, #ffffff));
+  }
+  .sung-word.done .word-chars {
+    background: none;
+    color: #ffffff;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+  }
 
   .instrumental-pill { font-style: italic; color: var(--text-secondary, #94a3b8); font-size: 0.7em; }
 
