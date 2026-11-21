@@ -556,41 +556,53 @@ fn collect_from_value(v: &Value, default_source: &str, out: &mut Vec<OnlineTrack
 }
 
 fn get_ytdlp_cmd(app: &AppHandle) -> Result<ShellCommand, String> {
+    // 1. First, try the bundled Tauri sidecar
+    if let Ok(cmd) = app.shell().sidecar("yt-dlp") {
+        return Ok(cmd);
+    }
+
+    let bin_name = if cfg!(target_os = "windows") { "yt-dlp.exe" } else { "yt-dlp" };
+
+    // 2. Check next to current executable
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            if dir.join("yt-dlp.exe").exists() {
-                return app
-                    .shell()
-                    .sidecar("yt-dlp")
-                    .map_err(|e| format!("Không khởi tạo được yt-dlp: {e}"));
+            let direct = dir.join(bin_name);
+            if direct.exists() {
+                return Ok(app.shell().command(direct));
             }
         }
     }
 
+    // 3. Fallback to AppData directory
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let _ = std::fs::create_dir_all(&data_dir);
-    let bin_path = data_dir.join("yt-dlp.exe");
+    let bin_path = data_dir.join(bin_name);
 
     if !bin_path.exists() {
-        let dev_bin_dlc = PathBuf::from(
-            r"c:\miu dich\dlc\src-tauri\binaries\yt-dlp-x86_64-pc-windows-msvc.exe",
-        );
-        let dev_bin = PathBuf::from(
-            r"c:\miu dich\miu-player\src-tauri\binaries\yt-dlp-x86_64-pc-windows-msvc.exe",
-        );
-        if dev_bin_dlc.exists() {
-            let _ = std::fs::copy(&dev_bin_dlc, &bin_path);
-        } else if dev_bin.exists() {
-            let _ = std::fs::copy(&dev_bin, &bin_path);
-        } else {
-            let resp = ureq::get("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe")
-                .call()
-                .map_err(|e| format!("Không tải được yt-dlp: {e}"))?;
-            let mut bytes = Vec::new();
-            resp.into_reader()
-                .read_to_end(&mut bytes)
-                .map_err(|e| e.to_string())?;
-            std::fs::write(&bin_path, &bytes).map_err(|e| e.to_string())?;
+        #[cfg(target_os = "windows")]
+        let download_url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
+        #[cfg(target_os = "macos")]
+        let download_url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos";
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        let download_url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux";
+
+        let resp = ureq::get(download_url)
+            .call()
+            .map_err(|e| format!("Không tải được yt-dlp: {e}"))?;
+        let mut bytes = Vec::new();
+        resp.into_reader()
+            .read_to_end(&mut bytes)
+            .map_err(|e| e.to_string())?;
+        std::fs::write(&bin_path, &bytes).map_err(|e| e.to_string())?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(metadata) = std::fs::metadata(&bin_path) {
+                let mut perms = metadata.permissions();
+                perms.set_mode(0o755);
+                let _ = std::fs::set_permissions(&bin_path, perms);
+            }
         }
     }
 

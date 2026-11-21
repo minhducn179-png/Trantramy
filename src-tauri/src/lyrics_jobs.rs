@@ -714,9 +714,11 @@ pub fn open_lyrics_folder(app: AppHandle) -> Result<String, String> {
     let dir = s.cache_dir();
     let _ = std::fs::create_dir_all(&dir);
     #[cfg(target_os = "windows")]
-    {
-        let _ = std::process::Command::new("explorer").arg(&dir).spawn();
-    }
+    let _ = std::process::Command::new("explorer").arg(&dir).spawn();
+    #[cfg(target_os = "macos")]
+    let _ = std::process::Command::new("open").arg(&dir).spawn();
+    #[cfg(target_os = "linux")]
+    let _ = std::process::Command::new("xdg-open").arg(&dir).spawn();
     Ok(dir.to_string_lossy().into_owned())
 }
 #[tauri::command]
