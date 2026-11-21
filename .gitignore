@@ -20,6 +20,12 @@ src-tauri/target/
 # yt-dlp platform binaries (CI sẽ tải lại khi build)
 src-tauri/binaries/yt-dlp-*
 
+# Nội bộ dev - không public
+docs/
+brandkit/
+tests/
+.vscode/settings.json
+
 # OS
 Thumbs.db
 desktop.ini
