@@ -15,6 +15,8 @@
     "test:lyrics-ui": "node tests/lyrics-ui.mjs",
     "test:themes": "node tests/themes.mjs",
     "test:layout": "node tests/layout.mjs",
+    "test:track-info": "node tests/track-info.mjs",
+    "test:player": "node tests/player-errors.mjs",
     "test:karaoke": "node tests/karaoke.mjs",
     "test:karaoke:ui": "node tests/layout.mjs karaoke",
     "tauri": "tauri"

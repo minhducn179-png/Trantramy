@@ -356,13 +356,6 @@ import OnlinePanel from "$lib/OnlinePanel.svelte";
     await playDroppedLink(droppedUrl);
   }
 
-  $effect(() => {
-    const cur = player.current;
-    if (inspectedTrack && cur) {
-      inspectedTrack = cur;
-    }
-  });
-
   async function refresh() {
     const localQuery = active !== "home" && active !== "online" && active !== "settings" ? searchText.trim() : "";
     tracks =
@@ -627,12 +620,11 @@ import OnlinePanel from "$lib/OnlinePanel.svelte";
   }
 
   function toggleInspectCurrent() {
-    if (!player.current) return;
-    if (inspectedTrack) {
-      inspectedTrack = null;
-    } else {
-      inspectedTrack = player.current;
-    }
+    const current = player.current;
+    if (!current) return;
+    const isInspectingCurrent =
+      (inspectedTrack?.url || inspectedTrack?.path) === (current.url || current.path);
+    inspectedTrack = isInspectingCurrent ? null : current;
   }
 
   function handleDragMouseDown(e: MouseEvent) {

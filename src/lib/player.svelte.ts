@@ -90,7 +90,7 @@ class Player {
         if (this.audio && this.playing && this.audio.readyState < 3) {
           console.warn("Audio stalled for too long, skipping to next track");
           this.error = `Mất tín hiệu: ${this.current?.title ?? ""}`;
-          this.next(true);
+          this.skipFailedTrack();
         }
       }, 12000);
     });
@@ -100,7 +100,7 @@ class Player {
     a.addEventListener("error", (ev) => {
       console.error("Audio playback error:", a.error, a.src, ev);
       this.error = `Không phát được: ${this.current?.title ?? ""}`;
-      this.next(true);
+      this.skipFailedTrack();
     });
     this.audio = a;
     audioEngine.bindAudio(a, () => this.volume);
@@ -243,7 +243,7 @@ class Player {
         if (myToken !== this.loadToken) return;
         this.loadingStream = false;
         this.error = `Không lấy được luồng: ${t.title} (${e})`;
-        this.next(true);
+        this.skipFailedTrack();
         return;
       }
     } else {
@@ -294,7 +294,7 @@ class Player {
 
   toggle() {
     this.init();
-    if (!this.current && this.queue.length > 0) {
+    if ((!this.current || this.error) && this.queue.length > 0) {
       this.load(Math.max(0, this.index));
       return;
     }
@@ -305,7 +305,7 @@ class Player {
 
   play() {
     this.init();
-    if (!this.current && this.queue.length > 0) {
+    if ((!this.current || this.error) && this.queue.length > 0) {
       this.load(Math.max(0, this.index));
       return;
     }
@@ -359,6 +359,18 @@ class Player {
     try {
       localStorage.setItem("dlc.player.auto_related", this.autoRelated ? "1" : "0");
     } catch {}
+  }
+
+  private skipFailedTrack() {
+    const pos = this.order.indexOf(this.index);
+    // Only advance forward on failure. Repeat and recommendations are for completed songs.
+    if (pos >= 0 && pos + 1 < this.order.length) {
+      this.load(this.order[pos + 1]);
+    } else {
+      this.loadingStream = false;
+      this.karaokeWaiting = this.karaoke;
+      this.audio?.pause();
+    }
   }
 
   next(auto = false) {

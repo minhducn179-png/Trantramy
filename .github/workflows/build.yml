@@ -30,7 +30,7 @@ jobs:
             ytdlp_name: yt-dlp-aarch64-apple-darwin
 
           # macOS Intel
-          - os: macos-13
+          - os: macos-15-intel
             target: x86_64-apple-darwin
             ytdlp_url: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
             ytdlp_name: yt-dlp-x86_64-apple-darwin
@@ -95,8 +95,8 @@ jobs:
       - name: Install npm dependencies
         run: npm install
 
-      - name: Build frontend (Vite)
-        run: npm run build
+      - name: Check frontend types
+        run: npm run check
 
       # ── Tauri bundle ──────────────────────────────────────────────────────
       - name: Build Tauri app

@@ -232,7 +232,7 @@
     controlsVisible = !controlsVisible;
     deskOpen = false;
     await tick();
-    dialog.querySelector<HTMLButtonElement>(controlsVisible ? '.hide-controls' : '.show-controls')?.focus();
+    dialog?.querySelector<HTMLButtonElement>(controlsVisible ? '.hide-controls' : '.show-controls')?.focus();
   }
 
   function openLyrics() { panel = 'lyrics'; deskOpen = true; }
@@ -303,7 +303,7 @@
   class:dim-hidden={lyricsUi.config.dimInactive === 'hidden'}
   bind:this={dialog}
   aria-label="Studio Lời bài hát & Karaoke"
-  oncancel={event => { event.preventDefault(); onclose(); }}
+  oncancel={(event: Event) => { event.preventDefault(); onclose(); }}
 >
   <div class="room-background" aria-hidden="true">
     {#if theme.config.bgImage}
