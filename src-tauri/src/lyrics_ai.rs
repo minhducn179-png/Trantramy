@@ -4,7 +4,7 @@ use rubato::Resampler;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-#[cfg(all(windows, target_arch = "x86_64"))]
+#[cfg(any(test, all(windows, target_arch = "x86_64")))]
 use std::io::Write;
 use std::{
     fs,

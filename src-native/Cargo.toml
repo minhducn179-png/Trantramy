@@ -33,7 +33,6 @@ tempfile = "3"
 symphonia = { version = "0.5", features = ["all"] }
 rubato = "0.16"
 hound = "3.5"
-zip = { version = "2", default-features = false, features = ["deflate"] }
 base64 = "0.22"
 url = "2"
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
@@ -41,6 +40,10 @@ keyring = { version = "3", features = ["windows-native", "apple-native", "sync-s
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects"] }
 winreg = "0.55"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
