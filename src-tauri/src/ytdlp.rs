@@ -1,14 +1,27 @@
+#[cfg(feature = "native")]
+use crate::context::AppHandle;
+#[cfg(feature = "native")]
+pub use crate::process::{download_audio, run_ytdlp};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(not(feature = "native"))]
+use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
+#[cfg(not(feature = "native"))]
+use tauri::async_runtime as runtime;
+#[cfg(not(feature = "native"))]
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_shell::process::{Command as ShellCommand, CommandEvent};
+#[cfg(not(feature = "native"))]
 use tauri_plugin_shell::ShellExt;
+#[cfg(not(feature = "native"))]
+use tauri_plugin_shell::process::{Command as ShellCommand, CommandEvent};
+#[cfg(feature = "native")]
+use tokio::task as runtime;
 
 fn http_agent() -> &'static ureq::Agent {
     static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
@@ -195,14 +208,13 @@ fn collect_yt_video_renderers(v: &Value, limit: usize, out: &mut Vec<OnlineTrack
     }
     match v {
         Value::Object(map) => {
-            if let Some(vr) = map.get("videoRenderer") {
-                if let Some(track) = parse_video_renderer(vr) {
-                    if !out.iter().any(|x| x.url == track.url) {
-                        out.push(track);
-                        if out.len() >= limit {
-                            return;
-                        }
-                    }
+            if let Some(vr) = map.get("videoRenderer")
+                && let Some(track) = parse_video_renderer(vr)
+                && !out.iter().any(|x| x.url == track.url)
+            {
+                out.push(track);
+                if out.len() >= limit {
+                    return;
                 }
             }
             for val in map.values() {
@@ -241,8 +253,14 @@ fn parse_video_renderer(vr: &Value) -> Option<OnlineTrack> {
     let artist = vr
         .pointer("/ownerText/runs/0/text")
         .and_then(|x| x.as_str())
-        .or_else(|| vr.pointer("/longBylineText/runs/0/text").and_then(|x| x.as_str()))
-        .or_else(|| vr.pointer("/shortBylineText/runs/0/text").and_then(|x| x.as_str()))
+        .or_else(|| {
+            vr.pointer("/longBylineText/runs/0/text")
+                .and_then(|x| x.as_str())
+        })
+        .or_else(|| {
+            vr.pointer("/shortBylineText/runs/0/text")
+                .and_then(|x| x.as_str())
+        })
         .unwrap_or("YouTube")
         .trim()
         .to_string();
@@ -274,7 +292,11 @@ fn fast_youtube_search(query: &str, limit: usize) -> Option<Vec<OnlineTrack>> {
         .call()
         .ok()?;
     let html = resp.into_string().ok()?;
-    let markers = ["var ytInitialData = ", "window[\"ytInitialData\"] = ", "ytInitialData = "];
+    let markers = [
+        "var ytInitialData = ",
+        "window[\"ytInitialData\"] = ",
+        "ytInitialData = ",
+    ];
     let mut json_slice: Option<&str> = None;
     for m in markers {
         if let Some(pos) = html.find(m) {
@@ -289,11 +311,7 @@ fn fast_youtube_search(query: &str, limit: usize) -> Option<Vec<OnlineTrack>> {
     let val: Value = serde_json::from_str(raw_json).ok()?;
     let mut out = Vec::with_capacity(limit);
     collect_yt_video_renderers(&val, limit, &mut out);
-    if out.is_empty() {
-        None
-    } else {
-        Some(out)
-    }
+    if out.is_empty() { None } else { Some(out) }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -364,6 +382,12 @@ impl StreamCache {
     }
 }
 
+impl Default for StreamCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 struct InflightGuard<'a> {
     cache: &'a StreamCache,
     key: String,
@@ -400,6 +424,12 @@ impl SearchCache {
     }
 }
 
+impl Default for SearchCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn str_field(v: &Value, keys: &[&str]) -> Option<String> {
     for k in keys {
         if let Some(s) = v.get(*k).and_then(|x| x.as_str()) {
@@ -427,10 +457,10 @@ fn infer_source(v: &Value, url: &str, default_source: &str) -> String {
 }
 
 fn extract_thumbnail(v: &Value, id: Option<&str>, source: &str) -> Option<String> {
-    if let Some(t) = str_field(v, &["thumbnail"]) {
-        if t.starts_with("http") {
-            return Some(t);
-        }
+    if let Some(t) = str_field(v, &["thumbnail"])
+        && t.starts_with("http")
+    {
+        return Some(t);
     }
     if let Some(arr) = v.get("thumbnails").and_then(|x| x.as_array()) {
         for item in arr.iter().rev() {
@@ -438,19 +468,18 @@ fn extract_thumbnail(v: &Value, id: Option<&str>, source: &str) -> Option<String
             if tid == "original" && arr.len() > 1 {
                 continue;
             }
-            if let Some(u) = item.get("url").and_then(|x| x.as_str()) {
-                if u.starts_with("http") {
-                    return Some(u.to_string());
-                }
+            if let Some(u) = item.get("url").and_then(|x| x.as_str())
+                && u.starts_with("http")
+            {
+                return Some(u.to_string());
             }
         }
     }
-    if source == "youtube" {
-        if let Some(vid) = id {
-            if !vid.is_empty() {
-                return Some(format!("https://i.ytimg.com/vi/{vid}/hqdefault.jpg"));
-            }
-        }
+    if source == "youtube"
+        && let Some(vid) = id
+        && !vid.is_empty()
+    {
+        return Some(format!("https://i.ytimg.com/vi/{vid}/hqdefault.jpg"));
     }
     None
 }
@@ -488,19 +517,22 @@ fn parse_entry(v: &Value, default_source: &str) -> Option<OnlineTrack> {
             "YouTube".to_string()
         }
     });
-    let duration = v
-        .get("duration")
-        .and_then(|d| d.as_f64())
-        .unwrap_or(0.0);
+    let duration = v.get("duration").and_then(|d| d.as_f64()).unwrap_or(0.0);
     let thumbnail = extract_thumbnail(v, id.as_deref(), &source).or_else(|| {
         if source == "youtube" || url.contains("youtube.com") || url.contains("youtu.be") {
             let vid = if let Some(idx) = url.find("v=") {
                 let rest = &url[idx + 2..];
-                let s: String = rest.chars().take_while(|c| *c != '&' && *c != '#').collect();
+                let s: String = rest
+                    .chars()
+                    .take_while(|c| *c != '&' && *c != '#')
+                    .collect();
                 if s.len() == 11 { Some(s) } else { None }
             } else if let Some(idx) = url.find("youtu.be/") {
                 let rest = &url[idx + 9..];
-                let s: String = rest.chars().take_while(|c| *c != '?' && *c != '&').collect();
+                let s: String = rest
+                    .chars()
+                    .take_while(|c| *c != '?' && *c != '&')
+                    .collect();
                 if s.len() == 11 { Some(s) } else { None }
             } else {
                 None
@@ -555,13 +587,18 @@ fn collect_from_value(v: &Value, default_source: &str, out: &mut Vec<OnlineTrack
     }
 }
 
+#[cfg(not(feature = "native"))]
 fn get_ytdlp_cmd(app: &AppHandle) -> Result<ShellCommand, String> {
     // 1. First, try the bundled Tauri sidecar
     if let Ok(cmd) = app.shell().sidecar("yt-dlp") {
         return Ok(cmd);
     }
 
-    let bin_name = if cfg!(target_os = "windows") { "yt-dlp.exe" } else { "yt-dlp" };
+    let bin_name = if cfg!(target_os = "windows") {
+        "yt-dlp.exe"
+    } else {
+        "yt-dlp"
+    };
 
     // 2. Check next to current executable
     if let Ok(exe) = std::env::current_exe() {
@@ -609,6 +646,7 @@ fn get_ytdlp_cmd(app: &AppHandle) -> Result<ShellCommand, String> {
     Ok(app.shell().command(bin_path))
 }
 
+#[cfg(not(feature = "native"))]
 pub async fn run_ytdlp(app: &AppHandle, args: &[&str]) -> Result<String, String> {
     let mut full_args = vec![
         "--encoding",
@@ -644,7 +682,7 @@ fn prefetch_stream_bg(app: AppHandle, url: String) {
     if url.contains("spotify.com") {
         return;
     }
-    tauri::async_runtime::spawn(async move {
+    runtime::spawn(async move {
         if let Some(cache) = app.try_state::<StreamCache>() {
             let _ = resolve_stream(&app, &cache, &url).await;
         }
@@ -660,7 +698,7 @@ pub async fn search_source(
     if source == "youtube" {
         let q_owned = query.to_string();
         if let Ok(Some(fast_tracks)) =
-            tauri::async_runtime::spawn_blocking(move || fast_youtube_search(&q_owned, limit)).await
+            runtime::spawn_blocking(move || fast_youtube_search(&q_owned, limit)).await
         {
             if let Some(first) = fast_tracks.first() {
                 prefetch_stream_bg(app.clone(), first.url.clone());
@@ -668,7 +706,11 @@ pub async fn search_source(
             return Ok(fast_tracks);
         }
     }
-    let prefix = if source == "soundcloud" { "scsearch" } else { "ytsearch" };
+    let prefix = if source == "soundcloud" {
+        "scsearch"
+    } else {
+        "ytsearch"
+    };
     let spec = format!("{prefix}{limit}:{query}");
     let out = run_ytdlp(app, &["--flat-playlist", "-J", &spec]).await?;
     let tracks = parse_ytdlp_json(&out, source);
@@ -693,13 +735,13 @@ pub async fn search(
     }
 
     let cache_key = format!("{}:{}:{}", source, limit, q.to_lowercase());
-    if let Some(sc) = app.try_state::<SearchCache>() {
-        if let Some(cached) = sc.get(&cache_key) {
-            if let Some(first) = cached.first() {
-                prefetch_stream_bg(app.clone(), first.url.clone());
-            }
-            return Ok(cached);
+    if let Some(sc) = app.try_state::<SearchCache>()
+        && let Some(cached) = sc.get(&cache_key)
+    {
+        if let Some(first) = cached.first() {
+            prefetch_stream_bg(app.clone(), first.url.clone());
         }
+        return Ok(cached);
     }
 
     let results = match source {
@@ -711,12 +753,10 @@ pub async fn search(
             let q1 = q.to_string();
             let app2 = app.clone();
             let q2 = q.to_string();
-            let h1 = tauri::async_runtime::spawn(async move {
-                search_source(&app1, &q1, "youtube", half).await
-            });
-            let h2 = tauri::async_runtime::spawn(async move {
-                search_source(&app2, &q2, "soundcloud", half).await
-            });
+            let h1 =
+                runtime::spawn(async move { search_source(&app1, &q1, "youtube", half).await });
+            let h2 =
+                runtime::spawn(async move { search_source(&app2, &q2, "soundcloud", half).await });
             let yt = h1.await.ok().and_then(|r| r.ok()).unwrap_or_default();
             let sc = h2.await.ok().and_then(|r| r.ok()).unwrap_or_default();
             let mut yt_iter = yt.into_iter();
@@ -749,20 +789,20 @@ pub async fn search(
 pub async fn resolve_info(app: &AppHandle, url: &str) -> Result<Vec<OnlineTrack>, String> {
     let canon = canonical_url(url);
     let cache_key = format!("info:{}", canon);
-    if let Some(sc) = app.try_state::<SearchCache>() {
-        if let Some(cached) = sc.get(&cache_key) {
-            if let Some(first) = cached.first() {
-                prefetch_stream_bg(app.clone(), first.url.clone());
-            }
-            return Ok(cached);
+    if let Some(sc) = app.try_state::<SearchCache>()
+        && let Some(cached) = sc.get(&cache_key)
+    {
+        if let Some(first) = cached.first() {
+            prefetch_stream_bg(app.clone(), first.url.clone());
         }
+        return Ok(cached);
     }
 
     // 1. Fast HTTP metadata path for single YouTube videos (~150ms vs 3500ms yt-dlp spawn)
     if extract_youtube_id(url).is_some() && !url.to_lowercase().contains("/playlist") {
         let u_owned = url.to_string();
         if let Ok(Some(track)) =
-            tauri::async_runtime::spawn_blocking(move || fast_youtube_video_info(&u_owned)).await
+            runtime::spawn_blocking(move || fast_youtube_video_info(&u_owned)).await
         {
             prefetch_stream_bg(app.clone(), track.url.clone());
             let res = vec![track];
@@ -777,8 +817,7 @@ pub async fn resolve_info(app: &AppHandle, url: &str) -> Result<Vec<OnlineTrack>
     if url.to_lowercase().contains("soundcloud.com/") {
         let u_owned = url.to_string();
         if let Ok(Some(track)) =
-            tauri::async_runtime::spawn_blocking(move || fast_soundcloud_track_info(&u_owned))
-                .await
+            runtime::spawn_blocking(move || fast_soundcloud_track_info(&u_owned)).await
         {
             prefetch_stream_bg(app.clone(), track.url.clone());
             let res = vec![track];
@@ -790,11 +829,7 @@ pub async fn resolve_info(app: &AppHandle, url: &str) -> Result<Vec<OnlineTrack>
     }
 
     // 3. Fallback to yt-dlp for playlists or other domains
-    let out = run_ytdlp(
-        app,
-        &["--flat-playlist", "--playlist-end", "50", "-J", url],
-    )
-    .await?;
+    let out = run_ytdlp(app, &["--flat-playlist", "--playlist-end", "50", "-J", url]).await?;
     let def = if url.contains("soundcloud.com") {
         "soundcloud"
     } else {
@@ -825,10 +860,8 @@ pub async fn resolve_stream(
     if !cache.begin_inflight(&canon) {
         let app_clone = app.clone();
         let canon_wait = canon.clone();
-        let waited = tauri::async_runtime::spawn_blocking(move || {
-            let Some(c) = app_clone.try_state::<StreamCache>() else {
-                return None;
-            };
+        let waited = runtime::spawn_blocking(move || {
+            let c = app_clone.try_state::<StreamCache>()?;
             for _ in 0..240 {
                 std::thread::sleep(Duration::from_millis(50));
                 if let Some(hit) = c.get(&canon_wait) {
@@ -935,10 +968,7 @@ pub async fn resolve_stream(
             ],
         )
         .await?;
-        if let Some(fp) = printed
-            .lines()
-            .find_map(|l| l.trim().strip_prefix("FILE:"))
-        {
+        if let Some(fp) = printed.lines().find_map(|l| l.trim().strip_prefix("FILE:")) {
             let local = fp.trim().to_string();
             cache.put(url.to_string(), local.clone());
             return Ok(local);
@@ -961,7 +991,10 @@ pub fn cache_thumbnail(cover_dir: &Path, thumb_url: &str) -> Option<String> {
     }
     let resp = http_agent().get(thumb_url).call().ok()?;
     let mut bytes = Vec::new();
-    resp.into_reader().take(5 * 1024 * 1024).read_to_end(&mut bytes).ok()?;
+    resp.into_reader()
+        .take(5 * 1024 * 1024)
+        .read_to_end(&mut bytes)
+        .ok()?;
     if bytes.is_empty() {
         return None;
     }
@@ -970,6 +1003,7 @@ pub fn cache_thumbnail(cover_dir: &Path, thumb_url: &str) -> Option<String> {
     Some(file.to_string_lossy().to_string())
 }
 
+#[cfg(not(feature = "native"))]
 pub async fn download_audio(
     app: &AppHandle,
     url: &str,

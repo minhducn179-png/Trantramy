@@ -690,7 +690,9 @@ pub fn offline_with_prompt(
         "-of".into(),
         out.to_string_lossy().into(),
     ];
-    if let Some(text) = prompt { args.extend(["--prompt".into(), text.into()]); }
+    if let Some(text) = prompt {
+        args.extend(["--prompt".into(), text.into()]);
+    }
     run_process(
         &exe,
         &args,
@@ -759,7 +761,13 @@ fn word_segment(words: &[Value]) -> Value {
     })
 }
 
-fn multipart(audio: &[u8], model: &str, language: &str, boundary: &str, prompt: Option<&str>) -> Vec<u8> {
+fn multipart(
+    audio: &[u8],
+    model: &str,
+    language: &str,
+    boundary: &str,
+    prompt: Option<&str>,
+) -> Vec<u8> {
     let mut body = Vec::new();
     let mut fields = vec![
         ("model", model),
@@ -770,7 +778,9 @@ fn multipart(audio: &[u8], model: &str, language: &str, boundary: &str, prompt: 
     if language != "auto" {
         fields.push(("language", language));
     }
-    if let Some(text) = prompt { fields.push(("prompt", text)); }
+    if let Some(text) = prompt {
+        fields.push(("prompt", text));
+    }
     for (k, v) in fields {
         body.extend_from_slice(
             format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n")
@@ -1057,7 +1067,13 @@ mod tests {
     }
     #[test]
     fn multipart_and_http_errors_do_not_leak_secrets() {
-        let body = multipart(b"RIFFaudio", "whisper-large-v3-turbo", "vi", "TESTBOUNDARY", Some("Tôi yêu nhạc"));
+        let body = multipart(
+            b"RIFFaudio",
+            "whisper-large-v3-turbo",
+            "vi",
+            "TESTBOUNDARY",
+            Some("Tôi yêu nhạc"),
+        );
         let text = String::from_utf8(body).unwrap();
         assert!(text.contains("name=\"timestamp_granularities[]\""));
         assert!(text.contains("filename=\"audio.wav\""));

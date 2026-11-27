@@ -1,9 +1,16 @@
+#[cfg(feature = "native")]
+use crate::context::AppHandle;
 use crate::db::{self, Db, HistoryRow};
 use crate::ytdlp::{self, OnlineTrack};
 use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+#[cfg(not(feature = "native"))]
+use tauri::async_runtime as runtime;
+#[cfg(not(feature = "native"))]
 use tauri::{AppHandle, Manager};
+#[cfg(feature = "native")]
+use tokio::task as runtime;
 
 pub struct RecCache(pub Mutex<Option<(Vec<OnlineTrack>, Instant)>>);
 
@@ -14,16 +21,23 @@ impl RecCache {
 
     pub fn get(&self) -> Option<Vec<OnlineTrack>> {
         let guard = self.0.lock().unwrap();
-        if let Some((items, ts)) = guard.as_ref() {
-            if ts.elapsed() < Duration::from_secs(30 * 60) && !items.is_empty() {
-                return Some(items.clone());
-            }
+        if let Some((items, ts)) = guard.as_ref()
+            && ts.elapsed() < Duration::from_secs(30 * 60)
+            && !items.is_empty()
+        {
+            return Some(items.clone());
         }
         None
     }
 
     pub fn put(&self, items: Vec<OnlineTrack>) {
         *self.0.lock().unwrap() = Some((items, Instant::now()));
+    }
+}
+
+impl Default for RecCache {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -82,7 +96,11 @@ pub fn score_artists(
 
     let mut ranked: Vec<(String, f64)> = scores.into_values().collect();
     ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    ranked.into_iter().take(limit).map(|(name, _)| name).collect()
+    ranked
+        .into_iter()
+        .take(limit)
+        .map(|(name, _)| name)
+        .collect()
 }
 
 pub fn dedupe_filter(
@@ -113,14 +131,20 @@ pub fn dedupe_filter(
 fn extract_youtube_id(url: &str) -> Option<String> {
     if let Some(idx) = url.find("v=") {
         let rest = &url[idx + 2..];
-        let id: String = rest.chars().take_while(|c| *c != '&' && *c != '#').collect();
+        let id: String = rest
+            .chars()
+            .take_while(|c| *c != '&' && *c != '#')
+            .collect();
         if id.len() == 11 {
             return Some(id);
         }
     }
     if let Some(idx) = url.find("youtu.be/") {
         let rest = &url[idx + 9..];
-        let id: String = rest.chars().take_while(|c| *c != '?' && *c != '&').collect();
+        let id: String = rest
+            .chars()
+            .take_while(|c| *c != '?' && *c != '&')
+            .collect();
         if id.len() == 11 {
             return Some(id);
         }
@@ -128,25 +152,24 @@ fn extract_youtube_id(url: &str) -> Option<String> {
     None
 }
 
-pub async fn get_recommendations(
-    app: &AppHandle,
-    force: bool,
-) -> Result<Vec<OnlineTrack>, String> {
+pub async fn get_recommendations(app: &AppHandle, force: bool) -> Result<Vec<OnlineTrack>, String> {
     let rec_cache = app.state::<RecCache>();
-    let disk_cache = app.path().app_cache_dir().ok().map(|d| d.join("recs_cache.json"));
+    let disk_cache = app
+        .path()
+        .app_cache_dir()
+        .ok()
+        .map(|d| d.join("recs_cache.json"));
     if !force {
         if let Some(cached) = rec_cache.get() {
             return Ok(cached);
         }
-        if let Some(ref path) = disk_cache {
-            if let Ok(data) = std::fs::read_to_string(path) {
-                if let Ok(tracks) = serde_json::from_str::<Vec<OnlineTrack>>(&data) {
-                    if !tracks.is_empty() {
-                        rec_cache.put(tracks.clone());
-                        return Ok(tracks);
-                    }
-                }
-            }
+        if let Some(ref path) = disk_cache
+            && let Ok(data) = std::fs::read_to_string(path)
+            && let Ok(tracks) = serde_json::from_str::<Vec<OnlineTrack>>(&data)
+            && !tracks.is_empty()
+        {
+            rec_cache.put(tracks.clone());
+            return Ok(tracks);
         }
     }
 
@@ -190,11 +213,19 @@ pub async fn get_recommendations(
     // 1. YouTube Mix from most recent YouTube track in history or library
     let seed_yt = history
         .iter()
-        .find_map(|h| h.url.as_deref().and_then(extract_youtube_id).map(|id| (id, h.title.clone())))
+        .find_map(|h| {
+            h.url
+                .as_deref()
+                .and_then(extract_youtube_id)
+                .map(|id| (id, h.title.clone()))
+        })
         .or_else(|| {
-            owned_tracks
-                .iter()
-                .find_map(|t| t.url.as_deref().and_then(extract_youtube_id).map(|id| (id, t.title.clone())))
+            owned_tracks.iter().find_map(|t| {
+                t.url
+                    .as_deref()
+                    .and_then(extract_youtube_id)
+                    .map(|id| (id, t.title.clone()))
+            })
         });
 
     if let Some((vid, seed_title)) = seed_yt {
@@ -211,14 +242,22 @@ pub async fn get_recommendations(
     // 2. Queries per top artist (or starter topics when user has no history/library yet)
     let queries: Vec<(String, String)> = if top_artists.is_empty() {
         vec![
-            ("Nhạc trẻ Việt chill mới nhất".into(), "Đề xuất mở đầu".into()),
+            (
+                "Nhạc trẻ Việt chill mới nhất".into(),
+                "Đề xuất mở đầu".into(),
+            ),
             ("Indie Vietnam acoustic".into(), "Đề xuất mở đầu".into()),
             ("Lofi chill beats".into(), "Đề xuất mở đầu".into()),
         ]
     } else {
         top_artists
             .into_iter()
-            .map(|a| (format!("{a} bài hát hay nhất"), format!("Vì bạn hay nghe {a}")))
+            .map(|a| {
+                (
+                    format!("{a} bài hát hay nhất"),
+                    format!("Vì bạn hay nghe {a}"),
+                )
+            })
             .collect()
     };
 
@@ -227,12 +266,10 @@ pub async fn get_recommendations(
         let q1 = q.clone();
         let app2 = app.clone();
         let q2 = q.clone();
-        let h1 = tauri::async_runtime::spawn(async move {
-            ytdlp::search_source(&app1, &q1, "youtube", 5).await
-        });
-        let h2 = tauri::async_runtime::spawn(async move {
-            ytdlp::search_source(&app2, &q2, "soundcloud", 3).await
-        });
+        let h1 =
+            runtime::spawn(async move { ytdlp::search_source(&app1, &q1, "youtube", 5).await });
+        let h2 =
+            runtime::spawn(async move { ytdlp::search_source(&app2, &q2, "soundcloud", 3).await });
         let yt = h1.await.ok().and_then(|r| r.ok()).unwrap_or_default();
         let sc = h2.await.ok().and_then(|r| r.ok()).unwrap_or_default();
         let mut group = Vec::new();
@@ -262,10 +299,10 @@ pub async fn get_recommendations(
         .collect::<Vec<_>>();
 
     rec_cache.put(final_list.clone());
-    if let Some(ref path) = disk_cache {
-        if let Ok(json) = serde_json::to_string(&final_list) {
-            let _ = std::fs::write(path, json);
-        }
+    if let Some(ref path) = disk_cache
+        && let Ok(json) = serde_json::to_string(&final_list)
+    {
+        let _ = std::fs::write(path, json);
     }
     Ok(final_list)
 }

@@ -16,15 +16,24 @@ vite.config.ts.timestamp-*
 
 # Rust / Cargo
 src-tauri/target/
+src-native/target/
+src-native/binaries/
+/dist/
 
 # yt-dlp platform binaries (CI sẽ tải lại khi build)
 src-tauri/binaries/yt-dlp-*
 
-# Nội bộ dev - không public
-docs/
+# Tài liệu nội bộ cũ và brandkit vẫn không đưa vào Git
+/docs/*
+!/docs/README.md
+!/docs/SOURCE_REVIEW.md
+!/docs/RUST_MIGRATION.md
 brandkit/
-tests/
 .vscode/settings.json
+
+# Bản dựng cục bộ; chỉ theo dõi hướng dẫn
+/artifacts/*
+!/artifacts/README.md
 
 # OS
 Thumbs.db

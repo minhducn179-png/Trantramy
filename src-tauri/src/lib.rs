@@ -289,9 +289,7 @@ async fn add_online_to_library(app: AppHandle, track: OnlineTrack) -> Result<Tra
     let id = db::add_online_track(
         &conn,
         &track.url,
-        &track.title,
-        &track.artist,
-        &track.album,
+        (&track.title, &track.artist, &track.album),
         track.duration,
         local_cover.as_deref().or(track.thumbnail.as_deref()),
         &track.source,
@@ -324,9 +322,7 @@ async fn download_track(
             None => db::add_online_track(
                 &conn,
                 &track.url,
-                &track.title,
-                &track.artist,
-                &track.album,
+                (&track.title, &track.artist, &track.album),
                 track.duration,
                 local_cover.as_deref().or(track.thumbnail.as_deref()),
                 &track.source,

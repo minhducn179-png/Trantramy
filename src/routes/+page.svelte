@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Minus, Square, X, Search, Menu, House, Music2, Globe, Settings, FolderPlus, ListMusic, Plus, Image, Check } from "@lucide/svelte";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { emit, listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { open, ask } from "@tauri-apps/plugin-dialog";
@@ -13,21 +13,21 @@
     type OnlineTrack,
     type DownloadProgress,
   } from "$lib/api";
-  import { parseLrc, activeIndex, type ParsedLyrics } from "$lib/lrc";
-  import { lyricsState } from "$lib/lyrics.svelte";
-  import { player } from "$lib/player.svelte";
-  import { theme } from "$lib/theme.svelte";
-  import PlayerBar from "$lib/PlayerBar.svelte";
-  import TrackList from "$lib/TrackList.svelte";
-import OnlinePanel from "$lib/OnlinePanel.svelte";
-  import TrackDetailView from "$lib/TrackDetailView.svelte";
-  import SettingsPanel from "$lib/SettingsPanel.svelte";
-  import HomeView from "$lib/HomeView.svelte";
-  import EqualizerModal from "$lib/EqualizerModal.svelte";
-  import SpotifyImportModal from "$lib/SpotifyImportModal.svelte";
-  import AppSpeakerLogo from "$lib/AppSpeakerLogo.svelte";
-  import KaraokeRoom from "$lib/KaraokeRoom.svelte";
-  import { lyricsUi } from "$lib/lyricsUiConfig.svelte";
+  import { parseLrc, activeIndex, type ParsedLyrics } from "$lib/lyrics/lrc";
+  import { lyricsState } from "$lib/lyrics/lyrics.svelte";
+  import { player } from "$lib/player/player.svelte";
+  import { theme } from "$lib/settings/theme.svelte";
+  import PlayerBar from "$lib/player/PlayerBar.svelte";
+  import TrackList from "$lib/library/TrackList.svelte";
+  import OnlinePanel from "$lib/discovery/OnlinePanel.svelte";
+  import TrackDetailView from "$lib/library/TrackDetailView.svelte";
+  import SettingsPanel from "$lib/settings/SettingsPanel.svelte";
+  import HomeView from "$lib/discovery/HomeView.svelte";
+  import EqualizerModal from "$lib/audio/EqualizerModal.svelte";
+  import SpotifyImportModal from "$lib/library/SpotifyImportModal.svelte";
+  import AppSpeakerLogo from "$lib/components/AppSpeakerLogo.svelte";
+  import KaraokeRoom from "$lib/karaoke/KaraokeRoom.svelte";
+  import { lyricsUi } from "$lib/lyrics/lyricsUiConfig.svelte";
 
   let tracks = $state<Track[]>([]);
   let playlists = $state<Playlist[]>([]);
@@ -90,8 +90,17 @@ import OnlinePanel from "$lib/OnlinePanel.svelte";
     if (inspectedTrack) showLyrics = false;
   });
 
-  function toggleLyrics() {
+  async function toggleLyrics() {
     showQueue = false;
+    if (inspectedTrack) {
+      showLyrics = false;
+      await tick();
+      const panel = document.getElementById("track-detail-lyrics");
+      const content = panel?.querySelector<HTMLElement>(".lyric-line.active, .plain, textarea, .empty, .lyric-line") ?? panel;
+      await content?.scrollIntoView({ behavior: "instant", block: "center" });
+      panel?.focus({ preventScroll: true });
+      return;
+    }
     showLyrics = !showLyrics;
     tempFullscreen = false;
   }
@@ -1229,6 +1238,7 @@ import OnlinePanel from "$lib/OnlinePanel.svelte";
       {:else if active === "settings"}
         {#key lyricsSettingsRevision}
         <SettingsPanel
+          lyricsTab={lyricsSettingsRevision > 0 ? 'ai' : 'ui'}
           onopenequalizer={() => (showEqualizer = true)}
           onopenspotify={() => (showSpotifyImport = true)}
           onopenkaraoke={() => (showLyrics = true)}
@@ -1359,7 +1369,7 @@ import OnlinePanel from "$lib/OnlinePanel.svelte";
     <KaraokeRoom
       embedded={false}
       onclose={() => { showLyrics = false; tempFullscreen = false; }}
-      ontogglemaximize={() => { tempFullscreen = false; }}
+      ontogglemaximize={() => { lyricsUi.setWindowMode('mini'); tempFullscreen = false; }}
       onsettings={openLyricsSettings}
     />
   {/if}

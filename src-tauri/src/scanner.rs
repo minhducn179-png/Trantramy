@@ -34,14 +34,18 @@ pub fn index_file(conn: &Connection, path: &Path, cover_dir: &Path) -> Result<()
         .unwrap_or("Unknown")
         .to_string();
 
-    let (mut title, mut artist, mut album, mut cover) =
-        (fallback, "Unknown Artist".to_string(), "Unknown Album".to_string(), None);
+    let (mut title, mut artist, mut album, mut cover) = (
+        fallback,
+        "Unknown Artist".to_string(),
+        "Unknown Album".to_string(),
+        None,
+    );
 
     if let Some(tag) = tagged.primary_tag().or_else(|| tagged.first_tag()) {
-        if let Some(t) = tag.title() {
-            if !t.trim().is_empty() {
-                title = t.to_string();
-            }
+        if let Some(t) = tag.title()
+            && !t.trim().is_empty()
+        {
+            title = t.to_string();
         }
         if let Some(a) = tag.artist() {
             artist = a.to_string();

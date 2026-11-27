@@ -1,9 +1,11 @@
+#[cfg(feature = "native")]
+use crate::context::AppHandle;
 use crate::{
     db::{self, Db, Track},
     lyrics::{self, LyricsQuery, LyricsResult},
     lyrics_ai::{self, AiConfig},
-    lyrics_review::{self, ReviewResult},
     lyrics_pipeline,
+    lyrics_review::{self, ReviewResult},
     ytdlp,
 };
 use serde::{Deserialize, Serialize};
@@ -18,7 +20,12 @@ use std::{
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+#[cfg(not(feature = "native"))]
+use tauri::async_runtime as runtime;
+#[cfg(not(feature = "native"))]
 use tauri::{AppHandle, Emitter, Manager};
+#[cfg(feature = "native")]
+use tokio::task as runtime;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Job {
@@ -185,19 +192,27 @@ fn youtube_url(q: &LyricsQuery) -> Option<String> {
         })
 }
 fn ytdlp_path() -> Result<PathBuf, String> {
-    let mut paths = Vec::new();
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            paths.push(dir.join("yt-dlp.exe"));
-        }
+    #[cfg(feature = "native")]
+    {
+        crate::process::sidecar_path("yt-dlp")
     }
-    paths.push(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("binaries/yt-dlp-x86_64-pc-windows-msvc.exe"),
-    );
-    paths
-        .into_iter()
-        .find(|p| p.is_file())
-        .ok_or("Chưa có yt-dlp đi kèm ứng dụng.".into())
+    #[cfg(not(feature = "native"))]
+    {
+        let mut paths = Vec::new();
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                paths.push(dir.join("yt-dlp.exe"));
+            }
+        }
+        paths.push(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("binaries/yt-dlp-x86_64-pc-windows-msvc.exe"),
+        );
+        paths
+            .into_iter()
+            .find(|p| p.is_file())
+            .ok_or("Chưa có yt-dlp đi kèm ứng dụng.".into())
+    }
 }
 fn captions(q: &LyricsQuery, cancel: &AtomicBool) -> Result<Option<LyricsResult>, String> {
     let Some(url) = youtube_url(q) else {
@@ -394,40 +409,73 @@ fn audio_source(
         .ok_or("Không tải được âm thanh để nhận diện.".into())
 }
 
-fn pipeline_policy(service: &LyricsService, config: &AiConfig, cancel: &AtomicBool) -> Result<(), String> {
+fn pipeline_policy(
+    service: &LyricsService,
+    config: &AiConfig,
+    cancel: &AtomicBool,
+) -> Result<(), String> {
     lyrics_ai::check_cancel(cancel)?;
-    let live = service.config.lock().map_err(|_| "Cấu hình lyrics đang lỗi.")?;
-    if !live.audio_pipeline || live.gemini_model != config.gemini_model
-        || live.provider != config.provider || live.model != config.model || live.language != config.language
+    let live = service
+        .config
+        .lock()
+        .map_err(|_| "Cấu hình lyrics đang lỗi.")?;
+    if !live.audio_pipeline
+        || live.gemini_model != config.gemini_model
+        || live.provider != config.provider
+        || live.model != config.model
+        || live.language != config.language
         || live.context_rewrite != config.context_rewrite
         || (config.provider != "offline" && !live.cloud_consent)
-    { return Err("Quyền hoặc cấu hình AI đã thay đổi; dừng quy trình, chưa xuất lyric.".into()); }
+    {
+        return Err("Quyền hoặc cấu hình AI đã thay đổi; dừng quy trình, chưa xuất lyric.".into());
+    }
     Ok(())
 }
 
 fn pipeline_progress(app: &AppHandle, q: &LyricsQuery, stage: u8, message: &str, state: &str) {
     let service = app.state::<LyricsService>();
-    let total = service.config.lock().map(|config| 5 + u8::from(config.context_rewrite)).unwrap_or(5);
+    let total = service
+        .config
+        .lock()
+        .map(|config| 5 + u8::from(config.context_rewrite))
+        .unwrap_or(5);
     let _ = app.emit("lyrics-progress", serde_json::json!({"path": q.path, "stage": stage, "total": total, "message": message, "state": state}));
-    if let Ok(mut queue) = service.queue.lock() {
-        if let Some(job) = queue.jobs.iter_mut().find(|job| job.state == "running" && job.track.path == q.path) {
-            job.message = message.into();
-            let _ = app.emit("lyrics-queue", queue.clone());
-        }
+    if let Ok(mut queue) = service.queue.lock()
+        && let Some(job) = queue
+            .jobs
+            .iter_mut()
+            .find(|job| job.state == "running" && job.track.path == q.path)
+    {
+        job.message = message.into();
+        let _ = app.emit("lyrics-queue", queue.clone());
     }
 }
 
-fn audio_pipeline(app: &AppHandle, q: &LyricsQuery, config: &AiConfig, cancel: &AtomicBool) -> Result<LyricsResult, String> {
+fn audio_pipeline(
+    app: &AppHandle,
+    q: &LyricsQuery,
+    config: &AiConfig,
+    cancel: &AtomicBool,
+) -> Result<LyricsResult, String> {
     let service = app.state::<LyricsService>();
     let result: Result<LyricsResult, String> = (|| {
-        pipeline_progress(app, q, 0, "Chuẩn bị âm thanh cho quy trình nhiều bước", "running");
+        pipeline_progress(
+            app,
+            q,
+            0,
+            "Chuẩn bị âm thanh cho quy trình nhiều bước",
+            "running",
+        );
         pipeline_policy(&service, config, cancel)?;
-        let offline_ready = lyrics_ai::models(&service.model_dir()).iter().any(|m| m.name == config.model && m.installed);
+        let offline_ready = lyrics_ai::models(&service.model_dir())
+            .iter()
+            .any(|m| m.name == config.model && m.installed);
         lyrics_pipeline::validate(config, offline_ready)?;
         if lyrics_ai::credential("gemini", None)?.is_none() {
             return Err("AI_AUTH: Chưa lưu khóa Gemini để nghe đối chiếu ngữ cảnh.".into());
         }
-        if config.provider != "offline" && lyrics_ai::credential(&config.provider, None)?.is_none() {
+        if config.provider != "offline" && lyrics_ai::credential(&config.provider, None)?.is_none()
+        {
             return Err("AI_AUTH: Chưa lưu khóa của AI nhận diện đã chọn.".into());
         }
         let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
@@ -435,22 +483,48 @@ fn audio_pipeline(app: &AppHandle, q: &LyricsQuery, config: &AiConfig, cancel: &
         let audio = lyrics_ai::decode_audio(&source, config.max_audio_seconds, cancel)?;
         let reserve = |seconds| {
             pipeline_policy(&service, config, cancel)?;
-            let live = service.config.lock().map_err(|_| "Cấu hình lyrics đang lỗi.")?.clone();
+            let live = service
+                .config
+                .lock()
+                .map_err(|_| "Cấu hình lyrics đang lỗi.")?
+                .clone();
             service.reserve_cloud(seconds, &live)
         };
-        let result = lyrics_pipeline::run(&audio, config, cancel, |prompt| {
-            pipeline_policy(&service, config, cancel)?;
-            if config.provider == "offline" || (prompt.is_some() && config.provider == "gemini") {
-                lyrics_ai::offline_with_prompt(&service.model_dir(), &audio, config, cancel, prompt)
-            } else {
-                reserve(audio.duration().ceil() as u32)?;
-                lyrics_ai::cloud_with_prompt(&audio, config, cancel, || pipeline_policy(&service, config, cancel), prompt)
-            }
-        }, reserve, |stage, message| pipeline_progress(app, q, stage, message, "running"))?;
+        let result = lyrics_pipeline::run(
+            &audio,
+            config,
+            cancel,
+            |prompt| {
+                pipeline_policy(&service, config, cancel)?;
+                if config.provider == "offline" || (prompt.is_some() && config.provider == "gemini")
+                {
+                    lyrics_ai::offline_with_prompt(
+                        &service.model_dir(),
+                        &audio,
+                        config,
+                        cancel,
+                        prompt,
+                    )
+                } else {
+                    reserve(audio.duration().ceil() as u32)?;
+                    lyrics_ai::cloud_with_prompt(
+                        &audio,
+                        config,
+                        cancel,
+                        || pipeline_policy(&service, config, cancel),
+                        prompt,
+                    )
+                }
+            },
+            reserve,
+            |stage, message| pipeline_progress(app, q, stage, message, "running"),
+        )?;
         pipeline_policy(&service, config, cancel)?;
         Ok(result)
     })();
-    if let Err(error) = &result { pipeline_progress(app, q, 0, error, "error"); }
+    if let Err(error) = &result {
+        pipeline_progress(app, q, 0, error, "error");
+    }
     result
 }
 
@@ -483,10 +557,10 @@ pub fn generate(
     if lyrics::deleted(&service.cache_dir(), q) {
         return Ok(None);
     }
-    if let Ok(old_dir) = app.path().app_cache_dir() {
-        if let Some(old) = lyrics::local(&old_dir.join("lyrics"), q) {
-            return lyrics::save_generated(&service.cache_dir(), q, &old).map(Some);
-        }
+    if let Ok(old_dir) = app.path().app_cache_dir()
+        && let Some(old) = lyrics::local(&old_dir.join("lyrics"), q)
+    {
+        return lyrics::save_generated(&service.cache_dir(), q, &old).map(Some);
     }
     let id = lyrics::key(q);
     if let Some((time, message)) = service
@@ -494,18 +568,17 @@ pub fn generate(
         .lock()
         .map_err(|_| "Bộ nhớ lyrics đang lỗi.")?
         .get(&id)
+        && time.elapsed() < Duration::from_secs(60)
     {
-        if time.elapsed() < Duration::from_secs(60) {
-            return Err(message.clone());
-        }
+        return Err(message.clone());
     }
     let result = generate_uncached(app, q, ai, cancel, false, true);
-    if let Err(message) = &result {
-        if let Ok(mut failures) = service.failures.lock() {
-            failures.retain(|_, (time, _)| time.elapsed() < Duration::from_secs(60));
-            if failures.len() < 1024 {
-                failures.insert(id, (std::time::Instant::now(), message.clone()));
-            }
+    if let Err(message) = &result
+        && let Ok(mut failures) = service.failures.lock()
+    {
+        failures.retain(|_, (time, _)| time.elapsed() < Duration::from_secs(60));
+        if failures.len() < 1024 {
+            failures.insert(id, (std::time::Instant::now(), message.clone()));
         }
     }
     result
@@ -529,9 +602,7 @@ fn generate_uncached(
     let mut result = if full_pipeline {
         match audio_pipeline(app, q, &config, cancel) {
             Ok(item) => Some(item),
-            Err(_) if config.provider != "gemini" => {
-                None
-            }
+            Err(_) if config.provider != "gemini" => None,
             Err(e) => return Err(e),
         }
     } else {
@@ -620,22 +691,56 @@ fn generate_uncached(
         }
         if original_key != lyrics::key(q) {
             let error = "Tệp nhạc đã thay đổi trong lúc tạo lời; không lưu kết quả cũ.";
-            if full_pipeline { pipeline_progress(app, q, 0, error, "error"); }
+            if full_pipeline {
+                pipeline_progress(app, q, 0, error, "error");
+            }
             return Err(error.into());
         }
-        if full_pipeline { pipeline_policy(&service, &config, cancel)?; }
+        if full_pipeline {
+            pipeline_policy(&service, &config, cancel)?;
+        }
         if transcribe_only {
             if full_pipeline {
-                if item.draft_only { pipeline_progress(app, q, 0, "Còn chỗ chưa nghe rõ · chỉ trả bản nháp có đánh dấu", "needs_review"); }
-                else { pipeline_progress(app, q, 5 + u8::from(config.context_rewrite), "Đã hoàn thành lyric nhiều bước · xem trước trước khi lưu", "done"); }
+                if item.draft_only {
+                    pipeline_progress(
+                        app,
+                        q,
+                        0,
+                        "Còn chỗ chưa nghe rõ · chỉ trả bản nháp có đánh dấu",
+                        "needs_review",
+                    );
+                } else {
+                    pipeline_progress(
+                        app,
+                        q,
+                        5 + u8::from(config.context_rewrite),
+                        "Đã hoàn thành lyric nhiều bước · xem trước trước khi lưu",
+                        "done",
+                    );
+                }
             }
             return Ok(Some(item));
         }
         let saved = lyrics::save_generated(&service.cache_dir(), q, &item)?;
         let _ = app.emit("lyrics-updated", &q.path);
         if full_pipeline {
-            if saved.draft_only { pipeline_progress(app, q, 0, "Đã giữ bản nháp chưa rõ · không tự gửi AI lại", "needs_review"); }
-            else { pipeline_progress(app, q, 5 + u8::from(config.context_rewrite), "Đã hoàn thành và lưu lyric nhiều bước", "done"); }
+            if saved.draft_only {
+                pipeline_progress(
+                    app,
+                    q,
+                    0,
+                    "Đã giữ bản nháp chưa rõ · không tự gửi AI lại",
+                    "needs_review",
+                );
+            } else {
+                pipeline_progress(
+                    app,
+                    q,
+                    5 + u8::from(config.context_rewrite),
+                    "Đã hoàn thành và lưu lyric nhiều bước",
+                    "done",
+                );
+            }
         }
         Ok(Some(saved))
     } else {
@@ -663,9 +768,9 @@ fn review_with_policy(
     })
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub async fn lyrics_review_text(app: AppHandle, content: String) -> Result<ReviewResult, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    runtime::spawn_blocking(move || {
         let service = app.state::<LyricsService>();
         let _gate = service
             .gate
@@ -682,9 +787,9 @@ pub async fn lyrics_review_text(app: AppHandle, content: String) -> Result<Revie
     .map_err(|e| e.to_string())?
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub async fn lyrics_transcribe(app: AppHandle, track: LyricsQuery) -> Result<LyricsResult, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    runtime::spawn_blocking(move || {
         valid_query(&track)?;
         let service = app.state::<LyricsService>();
         let _gate = service
@@ -708,7 +813,7 @@ pub struct SettingsView {
     pub lyrics_dir: String,
     pub lyrics_count: usize,
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub fn open_lyrics_folder(app: AppHandle) -> Result<String, String> {
     let s = app.state::<LyricsService>();
     let dir = s.cache_dir();
@@ -721,9 +826,9 @@ pub fn open_lyrics_folder(app: AppHandle) -> Result<String, String> {
     let _ = std::process::Command::new("xdg-open").arg(&dir).spawn();
     Ok(dir.to_string_lossy().into_owned())
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub async fn lyrics_settings(app: AppHandle) -> Result<SettingsView, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    runtime::spawn_blocking(move || {
         let s = app.state::<LyricsService>();
         let keys = ["groq", "gemini", "openai"]
             .into_iter()
@@ -767,13 +872,13 @@ pub async fn lyrics_settings(app: AppHandle) -> Result<SettingsView, String> {
     .await
     .map_err(|e| e.to_string())?
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub async fn lyrics_save_settings(
     app: AppHandle,
     config: AiConfig,
     api_key: Option<String>,
 ) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    runtime::spawn_blocking(move || {
         config.validate()?;
         let s = app.state::<LyricsService>();
         if let Some(key) = api_key {
@@ -793,20 +898,18 @@ fn service_clear_failures(s: &LyricsService) {
         failures.clear();
     }
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub async fn lyrics_store_key(provider: String, api_key: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        lyrics_ai::credential(&provider, Some(&api_key)).map(|_| ())
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    runtime::spawn_blocking(move || lyrics_ai::credential(&provider, Some(&api_key)).map(|_| ()))
+        .await
+        .map_err(|e| e.to_string())?
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub async fn lyrics_read(
     app: AppHandle,
     track: LyricsQuery,
 ) -> Result<Option<LyricsResult>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    runtime::spawn_blocking(move || {
         let automatic = app
             .state::<LyricsService>()
             .config
@@ -818,14 +921,14 @@ pub async fn lyrics_read(
     .await
     .map_err(|e| e.to_string())?
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub async fn lyrics_download_model(app: AppHandle, model: String) -> Result<(), String> {
     let s = app.state::<LyricsService>();
     if s.downloading.swap(true, Ordering::SeqCst) {
         return Err("Đang có lượt tải model.".into());
     }
     s.model_cancelled.store(false, Ordering::SeqCst);
-    tauri::async_runtime::spawn_blocking(move || {
+    runtime::spawn_blocking(move || {
         let s = app.state::<LyricsService>();
         let last = std::cell::Cell::new(std::time::Instant::now());
         let result =
@@ -847,15 +950,15 @@ pub async fn lyrics_download_model(app: AppHandle, model: String) -> Result<(), 
     .await
     .map_err(|e| e.to_string())?
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub fn lyrics_cancel_download(app: AppHandle) {
     app.state::<LyricsService>()
         .model_cancelled
         .store(true, Ordering::SeqCst);
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub async fn lyrics_delete(app: AppHandle, track: LyricsQuery) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    runtime::spawn_blocking(move || {
         valid_query(&track)?;
         let service = app.state::<LyricsService>();
         let _gate = service
@@ -871,14 +974,14 @@ pub async fn lyrics_delete(app: AppHandle, track: LyricsQuery) -> Result<(), Str
     .map_err(|e| e.to_string())?
 }
 
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub async fn lyrics_generate(
     app: AppHandle,
     track: LyricsQuery,
     refresh_online: Option<bool>,
     rewrite: Option<bool>,
 ) -> Result<LyricsResult, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    runtime::spawn_blocking(move || {
         valid_query(&track)?;
         let service = app.state::<LyricsService>();
         if rewrite == Some(true)
@@ -914,7 +1017,7 @@ pub async fn lyrics_generate(
     .await
     .map_err(|e| e.to_string())?
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub fn lyrics_queue(app: AppHandle) -> Result<Queue, String> {
     app.state::<LyricsService>()
         .queue
@@ -922,7 +1025,7 @@ pub fn lyrics_queue(app: AppHandle) -> Result<Queue, String> {
         .map(|q| q.clone())
         .map_err(|_| "Hàng đợi đang lỗi.".into())
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub fn lyrics_pause(app: AppHandle) -> Result<(), String> {
     let s = app.state::<LyricsService>();
     s.cancelled.store(true, Ordering::SeqCst);
@@ -932,7 +1035,7 @@ pub fn lyrics_pause(app: AppHandle) -> Result<(), String> {
     let _ = app.emit("lyrics-queue", q.clone());
     Ok(())
 }
-#[tauri::command]
+#[cfg_attr(not(feature = "native"), tauri::command)]
 pub async fn lyrics_start_library(app: AppHandle, resume: bool) -> Result<Queue, String> {
     let s = app.state::<LyricsService>();
     if s.worker.swap(true, Ordering::SeqCst) {
@@ -988,7 +1091,7 @@ pub async fn lyrics_start_library(app: AppHandle, resume: bool) -> Result<Queue,
         }
     };
     let handle = app.clone();
-    tauri::async_runtime::spawn_blocking(move || run_queue(&handle));
+    runtime::spawn_blocking(move || run_queue(&handle));
     Ok(snapshot)
 }
 fn run_queue(app: &AppHandle) {
@@ -1034,16 +1137,16 @@ fn run_queue(app: &AppHandle) {
                         job.state = "needs_review".into();
                         job.message = "Bản nháp có chỗ chưa nghe rõ; mở lời để nghe và sửa, không tự gửi lại AI.".into();
                     } else {
-                    job.state = if existing { "skipped" } else { "done" }.into();
-                    job.message = format!(
-                        "{}{}",
-                        item.source,
-                        if item.review {
-                            " · cần kiểm tra"
-                        } else {
-                            ""
-                        }
-                    );
+                        job.state = if existing { "skipped" } else { "done" }.into();
+                        job.message = format!(
+                            "{}{}",
+                            item.source,
+                            if item.review {
+                                " · cần kiểm tra"
+                            } else {
+                                ""
+                            }
+                        );
                     }
                 }
                 Ok(None) => {
@@ -1134,12 +1237,25 @@ mod tests {
     fn pipeline_rechecks_consent_configuration_and_each_cloud_pass_budget() {
         let dir = tempfile::tempdir().unwrap();
         let service = LyricsService::new(dir.path().into()).unwrap();
-        let config = AiConfig { audio_pipeline: true, provider: "groq".into(), cloud_consent: true, daily_cloud_seconds: 6, ..Default::default() };
+        let config = AiConfig {
+            audio_pipeline: true,
+            provider: "groq".into(),
+            cloud_consent: true,
+            daily_cloud_seconds: 6,
+            ..Default::default()
+        };
         *service.config.lock().unwrap() = config.clone();
         let cancel = AtomicBool::new(false);
         assert!(pipeline_policy(&service, &config, &cancel).is_ok());
-        for _ in 0..3 { service.reserve_cloud(2, &config).unwrap(); }
-        assert!(service.reserve_cloud(1, &config).unwrap_err().starts_with("AI_BUDGET"));
+        for _ in 0..3 {
+            service.reserve_cloud(2, &config).unwrap();
+        }
+        assert!(
+            service
+                .reserve_cloud(1, &config)
+                .unwrap_err()
+                .starts_with("AI_BUDGET")
+        );
         service.config.lock().unwrap().audio_pipeline = false;
         assert!(pipeline_policy(&service, &config, &cancel).is_err());
         *service.config.lock().unwrap() = config.clone();

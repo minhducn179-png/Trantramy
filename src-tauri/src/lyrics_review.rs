@@ -212,10 +212,26 @@ mod tests {
     #[test]
     fn capitalization_and_punctuation_keep_word_times_and_unresolved_text_cannot_be_guessed() {
         let raw = "[00:01.00]<00:01.00>xin<00:01.20> <00:01.50>chao<00:02.50>\n[00:03.00]viet nam";
-        let edited = apply(raw, &slots(raw).unwrap(), &["Xin chào!".into(), "Việt Nam.".into()]).unwrap();
-        assert_eq!(edited.content, "[00:01.00]<00:01.00>Xin<00:01.20> <00:01.50>chào!<00:02.50>\n[00:03.00]Việt Nam.");
-        let config = AiConfig { text_consent: true, ..Default::default() };
-        let error = review(&format!("Xin {}", lyrics::UNRESOLVED_MARKER), &config, || panic!("text-only review must not guess audio")).unwrap_err();
+        let edited = apply(
+            raw,
+            &slots(raw).unwrap(),
+            &["Xin chào!".into(), "Việt Nam.".into()],
+        )
+        .unwrap();
+        assert_eq!(
+            edited.content,
+            "[00:01.00]<00:01.00>Xin<00:01.20> <00:01.50>chào!<00:02.50>\n[00:03.00]Việt Nam."
+        );
+        let config = AiConfig {
+            text_consent: true,
+            ..Default::default()
+        };
+        let error = review(
+            &format!("Xin {}", lyrics::UNRESOLVED_MARKER),
+            &config,
+            || panic!("text-only review must not guess audio"),
+        )
+        .unwrap_err();
         assert!(error.contains("chưa nghe rõ"));
     }
     #[test]

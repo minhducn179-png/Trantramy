@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection, OptionalExtension, Result};
+use rusqlite::{Connection, OptionalExtension, Result, params};
 use serde::Serialize;
 use std::sync::Mutex;
 
@@ -46,10 +46,19 @@ pub fn init(conn: &Connection) -> Result<()> {
     init_schema(conn)?;
     // Safe migrations for existing databases.
     let _ = conn.execute("ALTER TABLE playlists ADD COLUMN cover_path TEXT", []);
-    let _ = conn.execute("ALTER TABLE tracks ADD COLUMN source TEXT NOT NULL DEFAULT 'local'", []);
+    let _ = conn.execute(
+        "ALTER TABLE tracks ADD COLUMN source TEXT NOT NULL DEFAULT 'local'",
+        [],
+    );
     let _ = conn.execute("ALTER TABLE tracks ADD COLUMN url TEXT", []);
-    let _ = conn.execute("ALTER TABLE tracks ADD COLUMN liked INTEGER NOT NULL DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE history ADD COLUMN completed INTEGER NOT NULL DEFAULT 0", []);
+    let _ = conn.execute(
+        "ALTER TABLE tracks ADD COLUMN liked INTEGER NOT NULL DEFAULT 0",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE history ADD COLUMN completed INTEGER NOT NULL DEFAULT 0",
+        [],
+    );
     Ok(())
 }
 
@@ -111,13 +120,12 @@ pub fn upsert_track(
 pub fn add_online_track(
     conn: &Connection,
     url: &str,
-    title: &str,
-    artist: &str,
-    album: &str,
+    metadata: (&str, &str, &str),
     duration: f64,
     cover: Option<&str>,
     source: &str,
 ) -> Result<i64> {
+    let (title, artist, album) = metadata;
     if let Some(id) = conn
         .query_row(
             "SELECT id FROM tracks WHERE url=?1 OR path=?1 LIMIT 1",
@@ -165,7 +173,9 @@ fn row_to_track(r: &rusqlite::Row) -> Result<Track> {
         album: r.get(4)?,
         duration: r.get(5)?,
         cover_path: r.get(6)?,
-        source: r.get::<_, Option<String>>(7)?.unwrap_or_else(|| "local".into()),
+        source: r
+            .get::<_, Option<String>>(7)?
+            .unwrap_or_else(|| "local".into()),
         url: r.get(8)?,
         liked: r.get::<_, Option<i64>>(9)?.unwrap_or(0) != 0,
     })
@@ -224,12 +234,18 @@ pub fn list_playlists(conn: &Connection) -> Result<Vec<Playlist>> {
 }
 
 pub fn set_playlist_cover(conn: &Connection, id: i64, cover: Option<&str>) -> Result<()> {
-    conn.execute("UPDATE playlists SET cover_path=?2 WHERE id=?1", params![id, cover])?;
+    conn.execute(
+        "UPDATE playlists SET cover_path=?2 WHERE id=?1",
+        params![id, cover],
+    )?;
     Ok(())
 }
 
 pub fn rename_playlist(conn: &Connection, id: i64, name: &str) -> Result<()> {
-    conn.execute("UPDATE playlists SET name=?2 WHERE id=?1", params![id, name])?;
+    conn.execute(
+        "UPDATE playlists SET name=?2 WHERE id=?1",
+        params![id, name],
+    )?;
     Ok(())
 }
 
@@ -314,7 +330,10 @@ pub fn toggle_like_track(conn: &Connection, id: i64) -> Result<bool> {
         .optional()?
         .unwrap_or(0);
     let new_val = if current == 0 { 1 } else { 0 };
-    conn.execute("UPDATE tracks SET liked=?2 WHERE id=?1", params![id, new_val])?;
+    conn.execute(
+        "UPDATE tracks SET liked=?2 WHERE id=?1",
+        params![id, new_val],
+    )?;
     Ok(new_val != 0)
 }
 
@@ -363,9 +382,7 @@ mod tests {
         let id = add_online_track(
             &c,
             "https://youtu.be/abc",
-            "Song",
-            "Singer",
-            "YouTube",
+            ("Song", "Singer", "YouTube"),
             180.0,
             None,
             "youtube",
@@ -374,9 +391,7 @@ mod tests {
         let id2 = add_online_track(
             &c,
             "https://youtu.be/abc",
-            "Song Updated",
-            "Singer",
-            "YouTube",
+            ("Song Updated", "Singer", "YouTube"),
             180.0,
             Some("cov.jpg"),
             "youtube",
@@ -389,7 +404,16 @@ mod tests {
         assert_eq!(t.url.as_deref(), Some("https://youtu.be/abc"));
         assert_eq!(t.cover_path.as_deref(), Some("cov.jpg"));
 
-        record_play(&c, "Song Updated", "Singer", "youtube", t.url.as_deref(), 1000, true).unwrap();
+        record_play(
+            &c,
+            "Song Updated",
+            "Singer",
+            "youtube",
+            t.url.as_deref(),
+            1000,
+            true,
+        )
+        .unwrap();
         let h = recent_history(&c, 500).unwrap();
         assert_eq!(h.len(), 1);
         assert!(h[0].completed);

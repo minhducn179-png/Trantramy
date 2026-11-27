@@ -1,0 +1,55 @@
+[package]
+name = "trantramy"
+version = "2.0.0"
+edition = "2024"
+description = "Trantramy native Rust music player and karaoke studio"
+default-run = "trantramy"
+
+[features]
+default = ["native"]
+native = []
+
+[dependencies]
+eframe = { version = "0.31.1", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
+egui_extras = { version = "0.31.1", features = ["all_loaders"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
+rodio = { version = "0.21.1", features = ["symphonia-all"] }
+rfd = { version = "0.15.4", default-features = false, features = ["xdg-portal", "tokio"] }
+dirs = "6"
+tokio = { version = "1", features = ["rt-multi-thread", "process", "io-util", "time", "sync", "macros"] }
+rand = "0.9"
+regex = "1"
+unicode-normalization = "0.1"
+souvlaki = "0.9.3"
+raw-window-handle = "0.6"
+lofty = "0.22"
+walkdir = "2"
+rusqlite = { version = "0.32", features = ["bundled"] }
+sha2 = "0.10"
+ureq = { version = "2", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+symphonia = { version = "0.5", features = ["all"] }
+rubato = "0.16"
+hound = "3.5"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+base64 = "0.22"
+url = "2"
+keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects"] }
+winreg = "0.55"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
+
+[build-dependencies]
+winresource = "0.1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true

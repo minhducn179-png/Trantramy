@@ -4,9 +4,9 @@
   import { emit, listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { api, fmtTime, getTrackCover, handleImgError } from "$lib/api";
-  import { theme, type IslandWaveMode, type UiConfig } from "$lib/theme.svelte";
-  import WaveformBar from "$lib/WaveformBar.svelte";
-  import AppSpeakerLogo from "$lib/AppSpeakerLogo.svelte";
+  import { theme, type IslandWaveMode, type UiConfig } from "$lib/settings/theme.svelte";
+  import WaveformBar from "$lib/audio/WaveformBar.svelte";
+  import AppSpeakerLogo from "$lib/components/AppSpeakerLogo.svelte";
 
   interface IslandStatePayload {
     title: string;

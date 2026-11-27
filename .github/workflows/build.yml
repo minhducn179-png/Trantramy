@@ -1,4 +1,4 @@
-name: Build Trantramy
+name: Build Trantramy Rust
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -17,130 +17,114 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows x64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            ytdlp_url: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe
-            ytdlp_name: yt-dlp-x86_64-pc-windows-msvc.exe
-
-          # macOS Apple Silicon (M1/M2/M3)
+            sidecar: windows
           - os: macos-latest
             target: aarch64-apple-darwin
-            ytdlp_url: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
-            ytdlp_name: yt-dlp-aarch64-apple-darwin
-
-          # macOS Intel
+            sidecar: macos
           - os: macos-15-intel
             target: x86_64-apple-darwin
-            ytdlp_url: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
-            ytdlp_name: yt-dlp-x86_64-apple-darwin
-
-          # Linux x64
+            sidecar: macos
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            ytdlp_url: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux
-            ytdlp_name: yt-dlp-x86_64-unknown-linux-gnu
-
+            sidecar: linux
     runs-on: ${{ matrix.os }}
-    name: Build — ${{ matrix.target }}
-
+    name: Rust — ${{ matrix.target }}
     steps:
-      # ── Checkout ──────────────────────────────────────────────────────────
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # ── Node.js ───────────────────────────────────────────────────────────
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      # ── Rust ──────────────────────────────────────────────────────────────
-      - name: Setup Rust (${{ matrix.target }})
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - name: Verify release tag matches Cargo version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $versionLine = Select-String -Path src-native/Cargo.toml -Pattern '^version = "([^"]+)"$'
+          $version = $versionLine.Matches[0].Groups[1].Value
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Release tag must match native Cargo version' }
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+          components: clippy,rustfmt
+      - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
-
-      # ── Linux system deps ─────────────────────────────────────────────────
-      - name: Install Linux system dependencies
-        if: matrix.os == 'ubuntu-22.04'
+          workspaces: './src-native -> target'
+      - name: Linux native dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libssl-dev \
-            pkg-config \
-            libdbus-1-dev \
-            libsecret-1-dev \
-            libglib2.0-dev
-
-      # ── yt-dlp binary ─────────────────────────────────────────────────────
-      - name: Download yt-dlp binary
-        shell: bash
-        run: |
-          mkdir -p src-tauri/binaries
-          curl -L "${{ matrix.ytdlp_url }}" -o "src-tauri/binaries/${{ matrix.ytdlp_name }}"
-          chmod +x "src-tauri/binaries/${{ matrix.ytdlp_name }}" || true
-
-      # ── Frontend ──────────────────────────────────────────────────────────
-      - name: Install npm dependencies
-        run: npm install
-
-      - name: Check frontend types
-        run: npm run check
-
-      # ── Tauri bundle ──────────────────────────────────────────────────────
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+          sudo apt-get install -y libasound2-dev libdbus-1-dev libxkbcommon-dev libgl1-mesa-dev libegl1-mesa-dev libx11-dev pkg-config
+      - name: Download and verify bundled yt-dlp
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: --target ${{ matrix.target }}
-
-      # ── Upload artifacts ───────────────────────────────────────────────────
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+          GH_TOKEN: ${{ github.token }}
+          SIDECAR_PLATFORM: ${{ matrix.sidecar }}
+        run: |
+          $manifest = Get-Content src-native/sidecars.json -Raw | ConvertFrom-Json
+          $asset = $manifest.assets.($env:SIDECAR_PLATFORM)
+          New-Item -ItemType Directory -Force src-native/binaries | Out-Null
+          gh release download $manifest.release --repo $manifest.repository --pattern $asset.name --dir src-native/binaries
+          if ($LASTEXITCODE -ne 0) { throw 'yt-dlp download failed' }
+          $download = Join-Path src-native/binaries $asset.name
+          $actual = (Get-FileHash $download -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $asset.sha256) { throw 'yt-dlp checksum mismatch' }
+          $name = if ($IsWindows) { 'yt-dlp.exe' } else { 'yt-dlp' }
+          if ($asset.name -ne $name) { Move-Item $download (Join-Path src-native/binaries $name) }
+          if (-not $IsWindows) { chmod +x (Join-Path src-native/binaries $name) }
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-native/Cargo.toml --check
+      - name: Check Rust warnings
+        run: cargo clippy --manifest-path src-native/Cargo.toml --all-targets --locked -- -D warnings
+      - name: Rust regression tests
+        run: cargo test --manifest-path src-native/Cargo.toml --all-targets --locked
+      - name: Build native executable
+        run: cargo build --manifest-path src-native/Cargo.toml --release --locked --target ${{ matrix.target }}
+      - name: Verify executable and sidecar
+        shell: pwsh
+        env:
+          NATIVE_TARGET: ${{ matrix.target }}
+        run: |
+          $exe = if ($IsWindows) { 'trantramy.exe' } else { 'trantramy' }
+          & "src-native/target/$env:NATIVE_TARGET/release/$exe" --version
+          if ($LASTEXITCODE -ne 0) { throw 'Native executable failed' }
+          $sidecar = if ($IsWindows) { 'yt-dlp.exe' } else { 'yt-dlp' }
+          & "src-native/binaries/$sidecar" --version
+          if ($LASTEXITCODE -ne 0) { throw 'yt-dlp failed' }
+      - name: Package native application
+        run: cargo run --manifest-path src-native/Cargo.toml --locked --example package -- ${{ matrix.target }} src-native/target/${{ matrix.target }}/release dist
+      - name: Verify extracted Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./src-native/verify-windows-package.ps1 -SkipGui
+      - uses: actions/upload-artifact@v4
         with:
           name: Trantramy-${{ matrix.target }}
-          path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*
-            src-tauri/target/release/bundle/**/*
+          path: dist/*
+          if-no-files-found: error
           retention-days: 30
 
-  # ── Release (khi push tag v*) ────────────────────────────────────────────
   release:
     needs: build
-    runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+          merge-multiple: true
+      - name: Verify archive checksums
+        run: sha256sum --check *.sha256
+        working-directory: artifacts
+      - uses: softprops/action-gh-release@v2
         with:
-          name: Trantramy ${{ github.ref_name }}
+          name: Trantramy ${{ github.ref_name }} — Rust native
+          body_path: src-native/RELEASE_NOTES.md
           draft: false
           prerelease: false
+          fail_on_unmatched_files: true
           files: |
-            artifacts/**/*.exe
-            artifacts/**/*.msi
-            artifacts/**/*.dmg
-            artifacts/**/*.AppImage
-            artifacts/**/*.deb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            artifacts/*.zip
+            artifacts/*.dmg
+            artifacts/*.tar.gz
+            artifacts/*.sha256

@@ -81,12 +81,12 @@ pub fn parse_spotify_input(input: &str) -> Option<(SpotifyKind, String)> {
             "track" => Some(SpotifyKind::Track),
             _ => None,
         };
-        if let Some(kind) = kind_opt {
-            if i + 1 < parts.len() {
-                let id = parts[i + 1].trim().to_string();
-                if !id.is_empty() {
-                    return Some((kind, id));
-                }
+        if let Some(kind) = kind_opt
+            && i + 1 < parts.len()
+        {
+            let id = parts[i + 1].trim().to_string();
+            if !id.is_empty() {
+                return Some((kind, id));
             }
         }
     }
@@ -120,7 +120,10 @@ pub fn fetch_spotify(
     let embed_url = format!("https://open.spotify.com/embed/{}/{}", kind_str, id);
     let resp = spotify_agent()
         .get(&embed_url)
-        .set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .set(
+            "Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        )
         .set("Accept-Language", "en-US,en;q=0.9,vi;q=0.8")
         .call();
 
@@ -151,11 +154,18 @@ pub fn fetch_spotify(
 
     // 2. Fallback to oEmbed if embed page was blocked or failed
     let col = fetch_oembed(input, kind, id)?;
-    spotify_cache().lock().unwrap().insert(cache_key, col.clone());
+    spotify_cache()
+        .lock()
+        .unwrap()
+        .insert(cache_key, col.clone());
     Ok(col)
 }
 
-fn parse_embed_html(html: &str, kind: SpotifyKind, id: String) -> Result<SpotifyCollection, String> {
+fn parse_embed_html(
+    html: &str,
+    kind: SpotifyKind,
+    id: String,
+) -> Result<SpotifyCollection, String> {
     let needle = "id=\"__NEXT_DATA__\"";
     let start_pos = html
         .find(needle)
@@ -173,8 +183,8 @@ fn parse_embed_html(html: &str, kind: SpotifyKind, id: String) -> Result<Spotify
         .ok_or_else(|| "Không tìm thấy thẻ đóng script trong trang Spotify".to_string())?;
 
     let json_str = &content_slice[..end_pos].trim();
-    let data: serde_json::Value = serde_json::from_str(json_str)
-        .map_err(|e| format!("Lỗi phân giải JSON Spotify: {e}"))?;
+    let data: serde_json::Value =
+        serde_json::from_str(json_str).map_err(|e| format!("Lỗi phân giải JSON Spotify: {e}"))?;
 
     let entity = &data["props"]["pageProps"]["state"]["data"]["entity"];
     if entity.is_null() {
@@ -190,7 +200,12 @@ fn parse_embed_html(html: &str, kind: SpotifyKind, id: String) -> Result<Spotify
     let author = entity["subtitle"]
         .as_str()
         .or_else(|| entity["owner"]["name"].as_str())
-        .or_else(|| entity["artists"].as_array().and_then(|arr| arr.first()).and_then(|a| a["name"].as_str()))
+        .or_else(|| {
+            entity["artists"]
+                .as_array()
+                .and_then(|arr| arr.first())
+                .and_then(|a| a["name"].as_str())
+        })
         .unwrap_or("Spotify")
         .to_string();
 
@@ -268,8 +283,14 @@ fn fetch_oembed(input: &str, kind: SpotifyKind, id: String) -> Result<SpotifyCol
         .into_json()
         .map_err(|e| format!("Lỗi phân giải JSON oEmbed: {e}"))?;
 
-    let title = val["title"].as_str().unwrap_or("Spotify Collection").to_string();
-    let author = val["provider_name"].as_str().unwrap_or("Spotify").to_string();
+    let title = val["title"]
+        .as_str()
+        .unwrap_or("Spotify Collection")
+        .to_string();
+    let author = val["provider_name"]
+        .as_str()
+        .unwrap_or("Spotify")
+        .to_string();
     let thumbnail = val["thumbnail_url"].as_str().map(|s| s.to_string());
 
     let single_track = SpotifyTrackItem {
@@ -314,7 +335,9 @@ mod tests {
     #[test]
     fn test_parse_spotify_input() {
         assert_eq!(
-            parse_spotify_input("https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M?si=12345"),
+            parse_spotify_input(
+                "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M?si=12345"
+            ),
             Some((SpotifyKind::Playlist, "37i9dQZF1DXcBWIGoYBM5M".to_string()))
         );
         assert_eq!(

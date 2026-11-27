@@ -159,14 +159,17 @@ pub fn local(dir: &Path, q: &LyricsQuery) -> Option<LyricsResult> {
     if dir.join(format!("{id}.deleted.json")).exists() {
         return None;
     }
-    if !q.path.starts_with("http://") && !q.path.starts_with("https://") {
-        if let Some(text) = read_text(&Path::new(&q.path).with_extension("lrc")) {
-            return Some(LyricsResult::new(text, "lrc", false));
-        }
+    if !q.path.starts_with("http://")
+        && !q.path.starts_with("https://")
+        && let Some(text) = read_text(&Path::new(&q.path).with_extension("lrc"))
+    {
+        return Some(LyricsResult::new(text, "lrc", false));
     }
-    cached(&dir.join(format!("{id}.auto.json"))).or_else(|| {
-        read_text(&legacy_file(dir, q)).map(|s| LyricsResult::new(s, "legacy-cache", true))
-    }).or_else(|| cached(&dir.join(format!("{id}.draft.json"))).filter(|item| item.draft_only))
+    cached(&dir.join(format!("{id}.auto.json")))
+        .or_else(|| {
+            read_text(&legacy_file(dir, q)).map(|s| LyricsResult::new(s, "legacy-cache", true))
+        })
+        .or_else(|| cached(&dir.join(format!("{id}.draft.json"))).filter(|item| item.draft_only))
 }
 
 fn save_cached(path: &Path, item: &LyricsResult, no_clobber: bool) -> Result<(), String> {
@@ -178,7 +181,10 @@ fn save_cached(path: &Path, item: &LyricsResult, no_clobber: bool) -> Result<(),
 
 pub fn save_manual(dir: &Path, q: &LyricsQuery, content: &str) -> Result<(), String> {
     if content.contains(UNRESOLVED_MARKER) {
-        return Err("Còn vùng chưa nghe rõ. Nghe và sửa các dấu đánh dấu trước khi lưu lyric hoàn chỉnh.".into());
+        return Err(
+            "Còn vùng chưa nghe rõ. Nghe và sửa các dấu đánh dấu trước khi lưu lyric hoàn chỉnh."
+                .into(),
+        );
     }
     if content.trim().is_empty() || content.len() as u64 > MAX_LYRICS / 2 {
         return Err("Lời bài hát trống hoặc quá dài.".into());
@@ -847,11 +853,17 @@ mod tests {
         assert!(save_manual(dir.path(), &q, &draft.content).is_err());
         save_manual(dir.path(), &q, "Xin chào!").unwrap();
         assert!(!local(dir.path(), &q).unwrap().draft_only);
-        assert_eq!(save_generated(dir.path(), &q, &draft).unwrap().content, "Xin chào!");
+        assert_eq!(
+            save_generated(dir.path(), &q, &draft).unwrap().content,
+            "Xin chào!"
+        );
         delete_saved(dir.path(), &q).unwrap();
         assert!(local(dir.path(), &q).is_none());
         assert!(!dir.path().join(format!("{}.draft.json", key(&q))).exists());
-        let old: LyricsResult = serde_json::from_str(r#"{"content":"Existing","source":"manual","timing":"plain","review":false}"#).unwrap();
+        let old: LyricsResult = serde_json::from_str(
+            r#"{"content":"Existing","source":"manual","timing":"plain","review":false}"#,
+        )
+        .unwrap();
         assert!(!old.draft_only);
     }
     #[test]

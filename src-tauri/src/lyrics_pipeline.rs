@@ -2,7 +2,7 @@ use crate::{
     lyrics::{self, LyricsResult},
     lyrics_ai::{self, AiConfig, Audio},
 };
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{sync::atomic::AtomicBool, time::Duration};
@@ -211,7 +211,10 @@ fn unresolved_draft(analyses: &[Analysis], duration: f64) -> Result<Option<Lyric
     }
     let mut result = LyricsResult::new(rows.join("\n"), "gemini", true);
     result.draft_only = true;
-    result.notice = Some(format!("Bản nháp chưa hoàn tất. Khoảng cần nghe lại (ước lượng): {}. Dấu ⟦không nghe rõ⟧ không phải lời đã xác nhận; chưa căn mốc từng chữ. Nghe kiểm tra và sửa trước khi dùng.", intervals.join(", ")));
+    result.notice = Some(format!(
+        "Bản nháp chưa hoàn tất. Khoảng cần nghe lại (ước lượng): {}. Dấu ⟦không nghe rõ⟧ không phải lời đã xác nhận; chưa căn mốc từng chữ. Nghe kiểm tra và sửa trước khi dùng.",
+        intervals.join(", ")
+    ));
     Ok(Some(result))
 }
 
@@ -503,12 +506,14 @@ mod tests {
         ];
         assert_eq!(phrase(&parts).unwrap(), ["Là là lạ!", "Xin chào."]);
         for ends in [vec![0], vec![4], vec![2, 1], vec![1, 1]] {
-            assert!(phrase(&[Analysis {
-                words: vec!["Xin".into(), "chào".into()],
-                break_after: ends,
-                ..Default::default()
-            }])
-            .is_err());
+            assert!(
+                phrase(&[Analysis {
+                    words: vec!["Xin".into(), "chào".into()],
+                    break_after: ends,
+                    ..Default::default()
+                }])
+                .is_err()
+            );
         }
         assert!(phrase(&[]).is_err());
         assert!(check_words(&["thêm chữ".into()]).is_err());
@@ -520,12 +525,16 @@ mod tests {
         let lines = vec!["Là là lạ!".into(), "Xin chào.".into()];
         let result = align(&lines, &transcript, 6.0).unwrap();
         assert_eq!(result.timing, "word");
-        assert!(result
-            .content
-            .contains("<00:01.10>là<00:01.30> <00:01.50>lạ!<00:03.50>"));
-        assert!(result
-            .content
-            .contains("[00:05.00]<00:05.00>Xin<00:05.20> <00:05.20>chào.<00:05.80>"));
+        assert!(
+            result
+                .content
+                .contains("<00:01.10>là<00:01.30> <00:01.50>lạ!<00:03.50>")
+        );
+        assert!(
+            result
+                .content
+                .contains("[00:05.00]<00:05.00>Xin<00:05.20> <00:05.20>chào.<00:05.80>")
+        );
         assert!(align(&["Là lạ! Xin chào.".into()], &transcript, 6.0).is_err());
         assert!(align(&["Là là lạ! Xin tạm biệt.".into()], &transcript, 6.0).is_err());
         let mut bad = transcript.clone();
@@ -657,9 +666,11 @@ mod tests {
         assert_eq!(*stages.borrow(), [1, 2, 3, 4, 5, 6]);
         assert!(!result.draft_only);
         assert!(result.content.contains("<00:00.50>chào,<00:01.00>"));
-        assert!(result
-            .content
-            .contains("<00:01.20>Việt<00:01.50> <00:01.50>Nam!<00:02.50>"));
+        assert!(
+            result
+                .content
+                .contains("<00:01.20>Việt<00:01.50> <00:01.50>Nam!<00:02.50>")
+        );
     }
     #[test]
     fn unresolved_audio_returns_only_a_marked_draft_without_guessing_or_word_alignment() {
@@ -682,9 +693,9 @@ mod tests {
                     ))
                 },
                 |_, prior| {
-                    if prior.is_some() {
+                    if let Some(prior) = prior {
                         assert!(extra);
-                        assert_eq!(prior.unwrap()[0].uncertain.len(), 1);
+                        assert_eq!(prior[0].uncertain.len(), 1);
                     }
                     reviews += 1;
                     Ok(vec![Analysis {
@@ -819,25 +830,29 @@ mod tests {
             samples: vec![0.0; 16000],
         };
         config.audio_pipeline = false;
-        assert!(review_audio(
-            &audio,
-            "Xin chào",
-            None,
-            &config,
-            &AtomicBool::new(false),
-            &|_| panic!("no upload"),
-            &|_, _| {}
-        )
-        .unwrap_err()
-        .contains("Chưa cho phép"));
-        assert!(run(
-            &audio,
-            &config,
-            &AtomicBool::new(true),
-            |_| panic!("no STT"),
-            |_| panic!("no upload"),
-            |_, _| {}
-        )
-        .is_err());
+        assert!(
+            review_audio(
+                &audio,
+                "Xin chào",
+                None,
+                &config,
+                &AtomicBool::new(false),
+                &|_| panic!("no upload"),
+                &|_, _| {}
+            )
+            .unwrap_err()
+            .contains("Chưa cho phép")
+        );
+        assert!(
+            run(
+                &audio,
+                &config,
+                &AtomicBool::new(true),
+                |_| panic!("no STT"),
+                |_| panic!("no upload"),
+                |_, _| {}
+            )
+            .is_err()
+        );
     }
 }
