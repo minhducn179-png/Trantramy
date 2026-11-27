@@ -39,7 +39,6 @@ keyring = { version = "3", features = ["windows-native", "apple-native", "sync-s
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects"] }
-winreg = "0.55"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]

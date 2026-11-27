@@ -83,7 +83,7 @@ jobs:
           NATIVE_TARGET: ${{ matrix.target }}
         run: |
           $exe = if ($IsWindows) { 'trantramy.exe' } else { 'trantramy' }
-          & "src-native/target/$env:NATIVE_TARGET/release/$exe" --version
+          & "src-native/target/$env:NATIVE_TARGET/release/$exe" --version | Out-Host
           if ($LASTEXITCODE -ne 0) { throw 'Native executable failed' }
           $sidecar = if ($IsWindows) { 'yt-dlp.exe' } else { 'yt-dlp' }
           & "src-native/binaries/$sidecar" --version
