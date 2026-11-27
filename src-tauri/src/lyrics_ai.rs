@@ -4,9 +4,11 @@ use rubato::Resampler;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+#[cfg(all(windows, target_arch = "x86_64"))]
+use std::io::Write;
 use std::{
     fs,
-    io::{Read, Write},
+    io::Read,
     path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::atomic::{AtomicBool, Ordering},
@@ -17,9 +19,12 @@ use symphonia::core::{
     io::MediaSourceStream, meta::MetadataOptions, probe::Hint,
 };
 
+#[cfg(all(windows, target_arch = "x86_64"))]
 const MODEL_REV: &str = "5359861c739e955e79d9a303bcbc70fb988958b1";
+#[cfg(all(windows, target_arch = "x86_64"))]
 const ENGINE_URL: &str =
     "https://github.com/ggml-org/whisper.cpp/releases/download/v1.8.3/whisper-bin-x64.zip";
+#[cfg(all(windows, target_arch = "x86_64"))]
 const ENGINE_HASH: &str = "d824b1e37599f882b396e73f1ee0bfd5d0529f700314c48311dcbd00b803321d";
 const MAX_AUDIO_BYTES: u64 = 128 * 1024 * 1024;
 
@@ -476,6 +481,7 @@ fn file_hash(path: &Path) -> Result<String, String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+#[cfg(all(windows, target_arch = "x86_64"))]
 fn download(
     url: &str,
     dest: &Path,
@@ -528,38 +534,45 @@ fn download(
     Ok(())
 }
 
+#[cfg(not(all(windows, target_arch = "x86_64")))]
+pub fn install_model(
+    _dir: &Path,
+    _name: &str,
+    _cancel: &AtomicBool,
+    _progress: impl Fn(u64, u64),
+) -> Result<(), String> {
+    Err("Bản offline hiện hỗ trợ Windows x64.".into())
+}
+
+#[cfg(all(windows, target_arch = "x86_64"))]
 pub fn install_model(
     dir: &Path,
     name: &str,
     cancel: &AtomicBool,
     progress: impl Fn(u64, u64),
 ) -> Result<(), String> {
-    #[cfg(not(all(windows, target_arch = "x86_64")))]
-    return Err("Bản offline hiện hỗ trợ Windows x64.".into());
-    #[cfg(all(windows, target_arch = "x86_64"))]
-    {
-        let (bytes, sha) = model_info(name)?;
-        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-        let dest = model_path(dir, name);
-        if !dest.exists() || file_hash(&dest)? != sha {
-            download(
-                &format!(
-                    "https://huggingface.co/ggerganov/whisper.cpp/resolve/{MODEL_REV}/ggml-{name}.bin"
-                ),
-                &dest,
-                bytes,
-                sha,
-                cancel,
-                &progress,
-            )?;
-        }
-        install_engine(dir, cancel)?;
-        let exe = engine_exe(dir)?;
-        run_process(&exe,&["--help".into()],exe.parent().unwrap(),Duration::from_secs(10),cancel,None)
-            .map_err(|_|"Đã tải công cụ nhưng không khởi động được whisper.cpp. Kiểm tra Windows x64 và Microsoft Visual C++ Runtime.".to_string())
+    let (bytes, sha) = model_info(name)?;
+    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    let dest = model_path(dir, name);
+    if !dest.exists() || file_hash(&dest)? != sha {
+        download(
+            &format!(
+                "https://huggingface.co/ggerganov/whisper.cpp/resolve/{MODEL_REV}/ggml-{name}.bin"
+            ),
+            &dest,
+            bytes,
+            sha,
+            cancel,
+            &progress,
+        )?;
     }
+    install_engine(dir, cancel)?;
+    let exe = engine_exe(dir)?;
+    run_process(&exe,&["--help".into()],exe.parent().unwrap(),Duration::from_secs(10),cancel,None)
+        .map_err(|_|"Đã tải công cụ nhưng không khởi động được whisper.cpp. Kiểm tra Windows x64 và Microsoft Visual C++ Runtime.".to_string())
 }
 
+#[cfg(all(windows, target_arch = "x86_64"))]
 fn install_engine(dir: &Path, cancel: &AtomicBool) -> Result<(), String> {
     let engine_dir = dir.join("whisper-v1.8.3");
     if engine_exe(dir).is_ok() {
@@ -939,6 +952,20 @@ pub fn cloud_with_prompt(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(not(all(windows, target_arch = "x86_64")))]
+    #[test]
+    fn unsupported_model_install_does_not_create_files_or_download() {
+        let temp = tempfile::tempdir().unwrap();
+        let destination = temp.path().join("models");
+        let error = install_model(&destination, "base", &AtomicBool::new(false), |_, _| {
+            panic!("Unsupported platforms must not download models")
+        })
+        .unwrap_err();
+        assert_eq!(error, "Bản offline hiện hỗ trợ Windows x64.");
+        assert!(!destination.exists());
+    }
+
     #[cfg(windows)]
     #[test]
     fn windows_credential_store_round_trip() {
